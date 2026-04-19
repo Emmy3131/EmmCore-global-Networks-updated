@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const OrderController = require('../controller/OrderController');
-const authController = require('../controller/AuthController');
+const authController = require('../controller/authController');
 
 // Protect all routes after this middleware
 router.use(authController.protect);

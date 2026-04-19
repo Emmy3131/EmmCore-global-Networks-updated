@@ -6,7 +6,7 @@ const connectDB = async () => {
     let conn;
 
     if(process.env.NODE_ENV === 'production') {
-      conn = process.env.DATABASE
+      conn = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
     }else{
       conn = process.env.DATABASE_LOCAL
     }
@@ -14,7 +14,7 @@ const connectDB = async () => {
 
     console.log(`MongoDB Connected: ${res.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(`Error: ${error}`);
     process.exit(1); // Exit process with failure
   }
 };
