@@ -1,32 +1,109 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const validator = require("validator");
+const crypto = require("crypto");
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, "Name is required"],
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+    },
+    role: {
+      type: String,
+      enum: {
+        values: ["user", "admin"],
+        message: "Role must be either 'user' or 'admin'. Got '{VALUE}'",
+      },
+      default: "user",
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      validate: [validator.isEmail, "Please provide a valid email"],
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [8, "Password must be at least 8 characters long"],
+      select: false,
+    },
+    passwordConfirm: {
+      type: String,
+      required: [true, "Please confirm your password"],
+      validate: {
+        validator: function (el) {
+          return el === this.password;
+        },
+        message: "Passwords are not the same",
+      },
+    },
+    phone: {
+      type: String,
+      required: [true, "Phone number is required"],
+      unique: true,
+    },
+    country: {
+      type: String,
+      required: [true, "Country is required"],
+    },
+    passwordchangedAt: Date,
+    address: {
+      type: String,
+      required: [true, "Address is required"],
+    },
+    passwordResetToken: String,
+    passwordResetExpires: Date,
   },
-  email: {
-    type: String,
-    required: [true, "Email is required"],
-    unique: true
-  },
-  password: {
-    type: String,
-    required: [true, "Password is required"],
-    minlength: [8, "Password must be at least 8 characters long"]
-  },
-  phone: {
-    type: String,
-    required: [true, "Phone number is required"]
-  },
-  country: {
-    type: String,
-    required: [true, "Country is required"]
-  },
-  address: {
-    type: String,
-    required: [true, "Address is required"]
+  { timestamps: true },
+);
+
+userSchema.pre("save", async function (next) {
+  // Only run if password was modified
+  if (!this.isModified("password")) return ;
+
+  // Hash password
+  this.password = await bcrypt.hash(this.password, 12);
+
+  // Remove confirm password
+  this.passwordConfirm = undefined;
+
+  // Set password change time
+  if (!this.isNew) {
+    this.passwordChangedAt = Date.now() - 1000;
   }
-}, { timestamps: true })
+});
 
-module.exports = mongoose.model('User', userSchema)
+userSchema.methods.correctPassword = async function (
+  candidatePassword,
+  userPassword,
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+
+    // Password changed AFTER token issued
+    return JWTTimestamp < changedTimestamp;
+  }
+
+  // Password never changed
+  return false;
+};
+
+userSchema.methods.createPasswordResetToken = function (){
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = Date.now() + 10*60*1000;
+
+  return resetToken;
+}
+
+module.exports = mongoose.model("User", userSchema);

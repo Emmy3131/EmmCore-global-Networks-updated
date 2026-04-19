@@ -1,15 +1,16 @@
 const express = require('express')
 const router = express.Router()
 const productController = require('../controller/ProductController')
+const authController = require('./../controller/authController')
 // CREATE + GET
 router
-  .route('/product')
+  .route('/')
   .get(productController.getProducts)
-  .post(productController.createProduct)
+  .post(authController.protect, authController.restrictTo('admin'), productController.createProduct)
 
 // UPDATE + DELETE
 router
-  .route('/product/:id')
+  .route('/:id')
   .get(productController.getProduct)
   .patch(productController.updateProduct)
   .delete(productController.deleteProduct)

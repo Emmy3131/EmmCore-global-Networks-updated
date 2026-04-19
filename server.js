@@ -1,15 +1,51 @@
-const dotenv = require('dotenv')
-dotenv.config({ path: './config.env' })
-const app = require('./app')
-const port = 5000
-const mongoose = require("mongoose")
+// ============================
+// 1. UNCAUGHT EXCEPTIONS (TOP)
+// ============================
+process.on("uncaughtException", (err) => {
+  console.log("UNCAUGHT EXCEPTION, Shutting down...");
+  console.log(err.name, err.message, err);
+  process.exit(1);
+});
+
+// ============================
+// 2. CONFIG
+// ============================
+const dotenv = require("dotenv");
+dotenv.config({ path: "./config.env" });
+const port = process.env.PORT;
 
 
+// ============================
+// 3. IMPORT APP
+// ============================
+const app = require("./app");
 
 
+// ============================
+// 4. DATABASE CONNECTION
+// ============================
+const DB = require("./Data/DB");
 
-let DB = process.env.DATABASE_LOCAL
-mongoose.connect(DB).then(()=> console.log('Database connected successfully!!'))
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`)
-})
+DB();
+
+
+// ============================
+// 5. START SERVER
+// ============================
+
+const server = app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+
+
+// ============================
+// 6. UNHANDLED REJECTIONS
+// ============================
+process.on("unhandledRejection", (err) => {
+  console.log("UNHANDLED REJECTION, Shutting down...");
+  console.log(err.name, err.message);
+
+  server.close(() => {
+    process.exit(1);
+  });
+});

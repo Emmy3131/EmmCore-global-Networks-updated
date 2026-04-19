@@ -1,10 +1,18 @@
 const express = require('express')
 const router = express.Router()
 const userController = require('../controller/UserController')
+const authController = require('../controller/authController')
+
+router.post('/signup', authController.signup)
+router.post('/login', authController.login)
+router.post('/logout', authController.logout)
+router.post('/forgotPassword', authController.forgotPassword)
+router.patch('/resetPassword/:token', authController.resetPassword)
+//router.post('/login', userController.login)
 
 // CREATE + GET
 router
-  .route('/user')
+  .route('/')
   .get(userController.getUsers)
   .post(userController.createUser)
 
