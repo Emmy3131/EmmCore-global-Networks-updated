@@ -1,21 +1,14 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
-// Function to connect to MongoDB
 const connectDB = async () => {
   try {
-    let conn;
+    const conn = await mongoose.connect(process.env.DATABASE);
 
-    if(process.env.NODE_ENV === 'production') {
-      conn = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
-    }else{
-      conn = process.env.DATABASE_LOCAL
-    }
-    const res = await mongoose.connect(conn);
-
-    console.log(`MongoDB Connected: ${res.connection.host}`);
+    console.log(`MongoDB Atlas Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error}`);
-    process.exit(1); // Exit process with failure
+    console.error("Database connection failed:");
+    console.error(error.message);
+    process.exit(1);
   }
 };
 
