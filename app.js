@@ -12,8 +12,20 @@ const cartRouter = require('./routes/cartRoutes')
 const categoryRoutes = require('./routes/CategoryRoutes')
 const AppError = require('./utils/appError')
 const globalErrorController = require('./controller/GlobalErrorController')
+const cors = require('cors')
 
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://emm-core-global-networks-updated.vercel.app",
+    ],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 
+app.options("*", cors());
 
 //Limit requests from same API
 const limiter = rateLimit({
@@ -40,9 +52,7 @@ app.use(helmet())
 //Data sanitization against xss
 //app.use(xss())
 
-
 app.set('query parser', 'extended')
-
 
 //ROUTES
 app.use('/api/v1/users', userRoutes)
