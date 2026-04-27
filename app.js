@@ -61,7 +61,7 @@ app.use("/api/v1/categories", categoryRoutes);
 /* ======================
    404 HANDLER
 ====================== */
-app.all("/*", (req, res, next) => {
+app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
