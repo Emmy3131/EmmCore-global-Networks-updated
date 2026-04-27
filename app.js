@@ -21,8 +21,7 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      "https://emm-core-global-networks-updated.vercel.app",
+      "http://localhost:5173"
     ],
     credentials: true,
   })
