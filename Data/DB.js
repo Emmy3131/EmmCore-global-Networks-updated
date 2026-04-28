@@ -1,14 +1,25 @@
 const mongoose = require("mongoose");
 
-// 🔥 cache connection across serverless executions
-let cached = global.mongoose;
+/*
+|--------------------------------------------------------------------------
+| GLOBAL CACHE (Vercel Serverless Optimization)
+|--------------------------------------------------------------------------
+*/
+
+let cached = global._mongoose;
 
 if (!cached) {
-  cached = global.mongoose = {
+  cached = global._mongoose = {
     conn: null,
-    promise: null
+    promise: null,
   };
 }
+
+/*
+|--------------------------------------------------------------------------
+| CONNECT DATABASE
+|--------------------------------------------------------------------------
+*/
 
 const connectDB = async () => {
   // ✅ already connected
@@ -16,20 +27,31 @@ const connectDB = async () => {
     return cached.conn;
   }
 
-  // ✅ create connection once
+  // ✅ create connection promise once
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.DATABASE, {
-      bufferCommands: false
-    }).then((mongooseInstance) => {
-      console.log(
-        `MongoDB Atlas Connected: ${mongooseInstance.connection.host}`
-      );
-      return mongooseInstance;
-    });
+    const opts = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
+    };
+
+    cached.promise = mongoose
+      .connect(process.env.DATABASE, opts)
+      .then((mongooseInstance) => {
+        console.log(
+          `✅ MongoDB Connected: ${mongooseInstance.connection.host}`
+        );
+        return mongooseInstance;
+      })
+      .catch((err) => {
+        cached.promise = null; // allow retry
+        console.error("❌ MongoDB Connection Error:", err);
+        throw err;
+      });
   }
 
   // ✅ wait for connection
   cached.conn = await cached.promise;
+
   return cached.conn;
 };
 
