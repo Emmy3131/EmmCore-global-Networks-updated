@@ -15,6 +15,8 @@ const globalErrorController = require("./controller/GlobalErrorController");
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 /* ======================
    ✅ CORS FIRST
 ====================== */
