@@ -88,7 +88,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 
   // ✅ 3) CREATE RESET LINK
  const resetURL =
-`https://emm-core-global-networks-updated.vercel.app/reset-password/${resetToken}`;
+`https://localhost:5173/reset-password/${resetToken}`;
 
   try {
 
