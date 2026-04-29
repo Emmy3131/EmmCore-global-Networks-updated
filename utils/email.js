@@ -1,5 +1,7 @@
 const nodemailer = require("nodemailer");
 
+const nodemailer = require("nodemailer");
+
 module.exports = class Email {
   constructor(user, url) {
     this.to = user.email;
@@ -8,32 +10,28 @@ module.exports = class Email {
   }
 
   createTransport() {
-    // return nodemailer.createTransport({
-    //   service: "gmail",
-    //   auth: {
-    //     password: process.env.EMAIL_PASSWORD,
-    //     user: process.env.EMAIL_USERNAME,
-    //   },
-    // });
+    // 🔥 PRODUCTION (Gmail or SMTP)
+    if (process.env.NODE_ENV === "production") {
+      return nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USERNAME,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      });
+    }
 
-    // return nodemailer.createTransport({
-    //   host: "sandbox.smtp.mailtrap.io",
-    //   port: 2525,
-    //   auth: {
-    //     password: process.env.EMAIL_PASSWORD,
-    //     user: process.env.EMAIL_USERNAME,
-    //   },
-    // });
-
+    // 🧪 DEVELOPMENT (Mailtrap)
     return nodemailer.createTransport({
-      host: "sandbox.smtp.mailtrap.io",
-      port: 2525,
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT,
       auth: {
-        user: "bf798c9cd23cfc",
-        pass: "cf6d474aa3a263",
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
       },
     });
   }
+
 
   async send(subject, message) {
     const mailOptions = {
