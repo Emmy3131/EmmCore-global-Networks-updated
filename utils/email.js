@@ -30,7 +30,6 @@ module.exports = class Email {
     });
   }
 
-
   async send(subject, message) {
     const mailOptions = {
       from: process.env.EMAIL_USERNAME,
@@ -42,10 +41,22 @@ module.exports = class Email {
   }
 
   async sendPasswordReset() {
-    await this.send(
-      "Your password reset token (valid for 10 minutes)",
-      `Forgot your password? Submit a PATCH request with your new password and 
-      passwordConfirm to: ${this.url}.\nIf you didn't forget your password, please ignore this email!`,
-    );
+    const message = `
+Forgot your password?
+
+Click the link below to reset it:
+
+${this.url}
+
+This link will expire in 10 minutes.
+If you didn't request this, please ignore this email.
+`;
+
+    await this.newTransport().sendMail({
+      from: this.from,
+      to: this.to,
+      subject: "Reset your password",
+      text: message,
+    });
   }
 };
