@@ -7,22 +7,12 @@ module.exports = class Email {
     this.firstName = user.name.split(" ")[0];
   }
 
+  // ================= TRANSPORT =================
   createTransport() {
-    // 🔥 PRODUCTION (Gmail or SMTP)
-    if (process.env.NODE_ENV === "production") {
-      return nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USERNAME,
-          pass: process.env.EMAIL_PASSWORD,
-        },
-      });
-    }
-
-    // 🧪 DEVELOPMENT (Mailtrap)
     return nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
+      secure: false,
       auth: {
         user: process.env.EMAIL_USERNAME,
         pass: process.env.EMAIL_PASSWORD,
@@ -30,33 +20,30 @@ module.exports = class Email {
     });
   }
 
+  // ================= SEND EMAIL =================
   async send(subject, message) {
     const mailOptions = {
-      from: process.env.EMAIL_USERNAME,
+      from: `EmmCore Global <${process.env.EMAIL_USERNAME}>`,
       to: this.to,
       subject,
       text: message,
     };
+
+    // ✅ CORRECT FUNCTION NAME
     await this.createTransport().sendMail(mailOptions);
   }
 
+  // ================= PASSWORD RESET =================
   async sendPasswordReset() {
-    const message = `
-Forgot your password?
+    await this.send(
+      "Reset your password",
+      `Hello ${this.firstName},
 
-Click the link below to reset it:
+Click the link below to reset your password:
 
 ${this.url}
 
-This link will expire in 10 minutes.
-If you didn't request this, please ignore this email.
-`;
-
-    await this.newTransport().sendMail({
-      from: this.from,
-      to: this.to,
-      subject: "Reset your password",
-      text: message,
-    });
+If you did not request this, ignore this email.`,
+    );
   }
 };
