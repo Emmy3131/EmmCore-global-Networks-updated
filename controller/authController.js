@@ -88,7 +88,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 
   // ✅ 3) CREATE RESET LINK
   const resetURL =
-    `${req.protocol}://${req.get("host")}/reset-password/${resetToken}`;
+    `${req.protocol}://${req.get("host")}/resetPassword/${req.params.token}/${resetToken}`;
 
   try {
 
