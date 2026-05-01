@@ -29,7 +29,7 @@ exports.getProducts = catchAsync(async (req, res, next) => {
 
 // ✅ GET SINGLE PRODUCT
 exports.getProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id)
+  const product = await Product.findById(req.params.id).populate('category');
 
   if (!product) {
     return next(new AppError("Product not found", 404));
