@@ -8,7 +8,7 @@ const AppError = require('../utils/appError')
 
 exports.getProducts = catchAsync(async (req, res, next) => {
 
-  const features = new ApiFeatures(Product.find().populate('category'), req.query)
+  const features = new ApiFeatures(Product.find(reg.params.id).populate('category'), req.query)
     .filter()
     .sort()
     .limitFields()
