@@ -5,17 +5,34 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
+    firstName: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, "First name is required"],
     },
+    lastName: {
+      type: String,
+      required: [true, "Last name is required"],
+    },
+    
     role: {
       type: String,
       enum: {
-        values: ["user", "admin"],
-        message: "Role must be either 'user' or 'admin'. Got '{VALUE}'",
+        values: ["user", "admin", "vendor"],
+        message: "Role must be either 'user' or 'admin' or 'vendor'. Got '{VALUE}'",
       },
       default: "user",
+    },
+
+    dateOfBirth: {
+      type: Date,
+      required: [true, "Date of birth is required"],
+    },
+    gender: {
+      type: String,
+      enum: {
+        values: ["male", "female", "other"],
+        message: "Gender must be either 'male', 'female', or 'other'. Got '{VALUE}'",
+      }
     },
     email: {
       type: String,
