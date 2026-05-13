@@ -46,6 +46,8 @@ exports.signup = catchAsync(async (req, res, next) => {
     phone: req.body.phone,
     country: req.body.country,
     address: req.body.address,
+    dateOfBirth: req.body.dateOfBirth,
+    gender: req.body.gender,
   });
   createSendToken(user, res, req, 201);
 });
