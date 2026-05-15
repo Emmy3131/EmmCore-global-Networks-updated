@@ -1,7 +1,7 @@
-const Stats = require("../models/statsModel");
-const User = require("../models/userModel");
-const Product = require("../models/productModel");
-const Order = require("../models/orderModel");
+const Stats = require("../model/statsModel");
+const User = require("../model/UserModel");
+const Product = require("../model/ProductModel");
+const Order = require("../model/OrderModel");
 
 /*
 |--------------------------------------------------------------------------
