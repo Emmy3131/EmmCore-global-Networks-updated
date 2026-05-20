@@ -5,6 +5,7 @@ const AppError = require("../utils/appError");
 const mongoose = require("mongoose");
 const Order = require("../model/OrderModel");
 const prepareOrderData = require("../utils/prepareOrderData");
+const crypto = require("crypto");
 
 // GET ALL ORDERS
 exports.getAllOrders = catchAsync(async (req, res, next) => {
@@ -38,32 +39,29 @@ exports.getOrder = catchAsync(async (req, res, next) => {
 exports.getCheckoutSession = catchAsync(async (req, res, next) => {
   const userId = req.user._id;
 
-  // 1 Get Cart
   const cart = await Cart.findOne({ user: userId });
 
   if (!cart || cart.items.length === 0) {
     return next(new AppError("Cart is empty", 400));
   }
 
-  // 2 Prepare Order Data (REUSING UTIL ✅)
   const { orderItems, totalPrice } = await prepareOrderData(cart);
 
-  // 3 Prepare Paystack Payload
   const payload = {
     email: req.user.email,
-    amount: totalPrice * 100, // kobo
-    callback_url: `${req.protocol}://${req.get("host")}/api/v1/orders/verify-payment`,
+    amount: totalPrice * 100,
+
+    /* ✅ FRONTEND REDIRECT */
+    callback_url: `${process.env.FRONTEND_URL}/payment-success`,
 
     metadata: {
       userId,
       orderItems,
       shippingAddress: req.body.shippingAddress,
-      paymentMethod: "paystack",
       totalPrice,
     },
   };
 
-  // 4 Call Paystack
   const response = await fetch(
     "https://api.paystack.co/transaction/initialize",
     {
@@ -73,7 +71,7 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
       body: JSON.stringify(payload),
-    },
+    }
   );
 
   const data = await response.json();
@@ -84,12 +82,9 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
-    message: "Checkout session created successfully",
     data: {
       authorizationUrl: data.data.authorization_url,
-      accessCode: data.data.access_code,
       reference: data.data.reference,
-      payload,
     },
   });
 });
@@ -97,7 +92,6 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
 // CREATE ORDER
 
 exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
-
   /* ===============================
      1️⃣ VERIFY PAYSTACK SIGNATURE
   =============================== */
@@ -112,7 +106,6 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
       .json({ status: "error", message: "Invalid signature" });
   }
 
-  
   res.status(200).json({ received: true });
   const event = req.body;
 
@@ -120,13 +113,8 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
      2️⃣ HANDLE SUCCESSFUL PAYMENT
   =============================== */
   if (event.event === "charge.success") {
-
-    const {
-      userId,
-      orderItems,
-      shippingAddress,
-      totalPrice,
-    } = event.data.metadata;
+    const { userId, orderItems, shippingAddress, totalPrice } =
+      event.data.metadata;
 
     const paymentMethod = event.data.channel;
     const paymentReference = event.data.reference;
@@ -156,10 +144,7 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
       }
 
       if (product.stock < item.quantity) {
-        throw new AppError(
-          `${product.name} stock is insufficient`,
-          400
-        );
+        throw new AppError(`${product.name} stock is insufficient`, 400);
       }
 
       product.stock -= item.quantity;
@@ -208,7 +193,6 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
       message: "Order processed successfully",
     });
   }
-
 });
 
 // DELETE ORDER

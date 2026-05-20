@@ -1,25 +1,37 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const OrderController = require('../controller/OrderController');
-const authController = require('../controller/authController');
 
-// Protect all routes after this middleware
-router.use(authController.protect);
+const orderController = require("../controller/OrderController");
+const authController = require("../controller/authController");
 
-router.post('/checkout', OrderController.getCheckoutSession);
-router.post('/create-order', OrderController.handlePayStackWebhook);
+/* ================= CHECKOUT ================= */
+router.post(
+  "/checkout",
+  authController.protect,
+  orderController.getCheckoutSession
+);
 
-// CREATE + GET ALL
+/* ================= PAYSTACK WEBHOOK ================= */
+/* NO AUTH HERE */
+router.post(
+  "/paystack-webhook",
+  orderController.handlePayStackWebhook
+);
+
+/* ================= ORDERS ================= */
 router
-  .route('/')
-  .get(OrderController.getAllOrders)
- 
+  .route("/")
+  .get(authController.protect, orderController.getAllOrders);
 
-
-// SINGLE ORDER
 router
-  .route('/:id')
-  .get(OrderController.getOrder)
-  .delete(OrderController.deleteOrder);
+  .route("/:id")
+  .get(authController.protect, orderController.getOrder)
+  .delete(authController.protect, orderController.deleteOrder);
+
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  orderController.handlePayStackWebhook
+);
 
 module.exports = router;
