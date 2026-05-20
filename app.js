@@ -21,16 +21,26 @@ app.set('trust proxy', 1);
 /* ======================
    ✅ CORS FIRST
 ====================== */
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://emm-core-shops.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      // "http://localhost:5173"
-      process.env.FRONTEND_URL
-    ],
+    origin: function (origin, callback) {
+      // allow requests with no origin (Postman / mobile apps)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
-
 /* ======================
    SECURITY
 ====================== */
