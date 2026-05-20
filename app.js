@@ -9,7 +9,7 @@ const productRoutes = require("./routes/ProductRouter");
 const orderRouter = require("./routes/orderRoutes");
 const cartRouter = require("./routes/cartRoutes");
 const categoryRoutes = require("./routes/CategoryRoutes");
-const statsRoutes = require("./routes/StatsRoutes");
+const statsRoutes = require("./routes/statsRoutes");
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");

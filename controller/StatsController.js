@@ -1,4 +1,3 @@
-const Stats = require("../model/StatsModel");
 const User = require("../model/UserModel");
 const Product = require("../model/ProductModel");
 const Order = require("../model/OrderModel");
@@ -10,15 +9,17 @@ const Order = require("../model/OrderModel");
 */
 exports.getStats = async (req, res) => {
   try {
-    // count documents
+    // counts
     const totalUsers = await User.countDocuments();
     const totalProducts = await Product.countDocuments();
     const totalOrders = await Order.countDocuments();
 
-    // calculate revenue
+    // revenue calculation (FIXED FIELD PATH)
     const revenue = await Order.aggregate([
       {
-        $match: { paymentStatus: "paid" }, // adjust to your schema
+        $match: {
+          "paymentResult.status": "success", // ✅ FIXED
+        },
       },
       {
         $group: {
@@ -28,7 +29,7 @@ exports.getStats = async (req, res) => {
       },
     ]);
 
-    const totalRevenue = revenue[0]?.totalRevenue || 0;
+    const totalRevenue = revenue?.[0]?.totalRevenue || 0;
 
     res.status(200).json({
       success: true,
@@ -40,6 +41,8 @@ exports.getStats = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("STATS ERROR:", error);
+
     res.status(500).json({
       success: false,
       message: error.message,
