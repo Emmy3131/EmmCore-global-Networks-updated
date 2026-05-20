@@ -3,7 +3,7 @@ const Product = require("../model/ProductModel");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const mongoose = require("mongoose");
-const Order = require("../model/OrderModel");
+const orderModel = require("../model/OrderModel");
 const prepareOrderData = require("../utils/prepareOrderData");
 const crypto = require("crypto");
 
