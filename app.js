@@ -21,6 +21,7 @@ app.set('trust proxy', 1);
 /* ======================
    ✅ CORS FIRST
 ====================== */
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://emm-core-shops.vercel.app",
@@ -29,14 +30,16 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (Postman / mobile apps)
+      // allow REST tools like Postman (no origin)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error("Not allowed by CORS"));
+      console.log("Blocked CORS request from:", origin);
+
+      return callback(null, false); // ❌ don't crash server
     },
     credentials: true,
   })
