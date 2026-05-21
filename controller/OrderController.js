@@ -14,7 +14,7 @@ const crypto = require("crypto");
 exports.getAllOrders = catchAsync(async (req, res, next) => {
 
   const orders = await Order.find()
-    .populate("user")
+    .populate("user", "firstName lastName email")
     .sort("-createdAt");
 
   res.status(200).json({
@@ -32,7 +32,7 @@ exports.getOrder = catchAsync(async (req, res, next) => {
   const { id } = req.params;
 
   const order = await Order.findById(id)
-    .populate("user");
+    .populate("user", "firstName lastName email");
 
   if (!order) {
     return next(
