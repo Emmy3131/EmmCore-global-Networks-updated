@@ -1,32 +1,43 @@
 const Cart = require("../model/CartModel");
 const Product = require("../model/ProductModel");
+const Order = require("../model/OrderModel");
+
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
-const mongoose = require("mongoose");
-const orderModel = require("../model/OrderModel");
 const prepareOrderData = require("../utils/prepareOrderData");
+
 const crypto = require("crypto");
 
-// GET ALL ORDERS
+/* ======================================================
+   GET ALL ORDERS
+====================================================== */
 exports.getAllOrders = catchAsync(async (req, res, next) => {
-  const orders = await orderModel.find();
 
-  if (orders.length === 0) {
-    return next(new AppError("No orders found", 404));
-  }
+  const orders = await Order.find()
+    .populate("user")
+    .sort("-createdAt");
 
   res.status(200).json({
     status: "success",
+    results: orders.length,
     data: orders,
   });
 });
 
-// GET SINGLE ORDER
+/* ======================================================
+   GET SINGLE ORDER
+====================================================== */
 exports.getOrder = catchAsync(async (req, res, next) => {
+
   const { id } = req.params;
-  const order = await orderModel.findById(id);
+
+  const order = await Order.findById(id)
+    .populate("user");
+
   if (!order) {
-    return next(new AppError("Order not found", 404));
+    return next(
+      new AppError("Order not found", 404)
+    );
   }
 
   res.status(200).json({
@@ -35,41 +46,68 @@ exports.getOrder = catchAsync(async (req, res, next) => {
   });
 });
 
-//CREATE CHECKOUT SESSION
+/* ======================================================
+   CREATE PAYSTACK CHECKOUT SESSION
+====================================================== */
 exports.getCheckoutSession = catchAsync(async (req, res, next) => {
+
   const userId = req.user._id;
 
-  const cart = await Cart.findOne({ user: userId });
+  /* ================= GET USER CART ================= */
+
+  const cart = await Cart.findOne({
+    user: userId,
+  });
 
   if (!cart || cart.items.length === 0) {
-    return next(new AppError("Cart is empty", 400));
+    return next(
+      new AppError("Cart is empty", 400)
+    );
   }
 
-  const { orderItems, totalPrice } = await prepareOrderData(cart);
+  /* ================= PREPARE ORDER DATA ================= */
+
+  const {
+    orderItems,
+    totalPrice,
+  } = await prepareOrderData(cart);
+
+  /* ================= PAYSTACK PAYLOAD ================= */
 
   const payload = {
     email: req.user.email,
+
     amount: totalPrice * 100,
 
-    /* ✅ FRONTEND REDIRECT */
-    callback_url: `${process.env.FRONTEND_URL}/payment-success`,
+    callback_url:
+      `${process.env.FRONTEND_URL}/payment-success`,
 
     metadata: {
       userId,
+
       orderItems,
-      shippingAddress: req.body.shippingAddress,
+
+      shippingAddress:
+        req.body.shippingAddress,
+
       totalPrice,
     },
   };
+
+  /* ================= INITIALIZE PAYMENT ================= */
 
   const response = await fetch(
     "https://api.paystack.co/transaction/initialize",
     {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
+
+        Authorization:
+          `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
+
       body: JSON.stringify(payload),
     }
   );
@@ -77,136 +115,251 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
   const data = await response.json();
 
   if (!response.ok) {
-    return next(new AppError("Payment initialization failed", 500));
+
+    console.log(data);
+
+    return next(
+      new AppError(
+        data.message || "Payment initialization failed",
+        500
+      )
+    );
   }
+
+  /* ================= RESPONSE ================= */
 
   res.status(200).json({
     status: "success",
+
     data: {
-      authorizationUrl: data.data.authorization_url,
-      reference: data.data.reference,
+      authorizationUrl:
+        data.data.authorization_url,
+
+      accessCode:
+        data.data.access_code,
+
+      reference:
+        data.data.reference,
     },
   });
 });
 
-// CREATE ORDER
-
+/* ======================================================
+   PAYSTACK WEBHOOK
+====================================================== */
 exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
-  /* ===============================
-     1️⃣ VERIFY PAYSTACK SIGNATURE
-  =============================== */
+
+  /* ================= VERIFY SIGNATURE ================= */
+
   const hash = crypto
-    .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
+    .createHmac(
+      "sha512",
+      process.env.PAYSTACK_SECRET_KEY_TEST
+    )
     .update(JSON.stringify(req.body))
     .digest("hex");
 
-  if (hash !== req.headers["x-paystack-signature"]) {
-    return res
-      .status(400)
-      .json({ status: "error", message: "Invalid signature" });
+  if (
+    hash !== req.headers["x-paystack-signature"]
+  ) {
+    return res.status(400).json({
+      status: "fail",
+      message: "Invalid signature",
+    });
   }
 
-  res.status(200).json({ received: true });
   const event = req.body;
 
-  /* ===============================
-     2️⃣ HANDLE SUCCESSFUL PAYMENT
-  =============================== */
+  /* ======================================================
+     SUCCESSFUL PAYMENT
+  ====================================================== */
+
   if (event.event === "charge.success") {
-    const { userId, orderItems, shippingAddress, totalPrice } =
-      event.data.metadata;
 
-    const paymentMethod = event.data.channel;
-    const paymentReference = event.data.reference;
+    const {
+      userId,
+      orderItems,
+      shippingAddress,
+      totalPrice,
+    } = event.data.metadata;
 
-    /* ===============================
-       3️⃣ PREVENT DUPLICATE ORDERS
-    =============================== */
-    const existingOrder = await Order.findOne({
-      "paymentResult.reference": paymentReference,
-    });
+    const paymentMethod =
+      event.data.channel;
+
+    const paymentReference =
+      event.data.reference;
+
+    /* ================= CHECK DUPLICATE ORDER ================= */
+
+    const existingOrder =
+      await Order.findOne({
+        "paymentResult.reference":
+          paymentReference,
+      });
 
     if (existingOrder) {
       return res.status(200).json({
         status: "success",
-        message: "Order already processed",
+        message:
+          "Order already processed",
       });
     }
 
-    /* ===============================
-       4️⃣ REDUCE PRODUCT STOCK
-    =============================== */
+    /* ================= UPDATE STOCK ================= */
+
     for (const item of orderItems) {
-      const product = await Product.findById(item.product);
+
+      const product =
+        await Product.findById(
+          item.product
+        );
 
       if (!product) {
-        throw new AppError("Product not found", 404);
+        throw new AppError(
+          "Product not found",
+          404
+        );
       }
 
-      if (product.stock < item.quantity) {
-        throw new AppError(`${product.name} stock is insufficient`, 400);
+      if (
+        product.stock < item.quantity
+      ) {
+        throw new AppError(
+          `${product.name} stock is insufficient`,
+          400
+        );
       }
 
       product.stock -= item.quantity;
+
       await product.save();
     }
 
-    /* ===============================
-       5️⃣ CREATE ORDER
-    =============================== */
+    /* ================= CREATE ORDER ================= */
+
     const order = await Order.create({
+
       user: userId,
+
       orderItems,
+
       shippingAddress,
+
       paymentMethod,
+
+      paymentStatus: "paid",
+
+      status: "processing",
+
+      isPaid: true,
+
+      paidAt: Date.now(),
+
       itemsPrice: totalPrice,
+
       taxPrice: 0,
+
       shippingPrice: 0,
+
       totalPrice,
 
       paymentResult: {
         id: event.data.id,
-        reference: paymentReference,
-        status: event.data.status,
-        email_address: event.data.customer.email,
+
+        reference:
+          paymentReference,
+
+        status:
+          event.data.status,
+
+        email_address:
+          event.data.customer.email,
       },
     });
 
-    /* ===============================
-       6️⃣ UPDATE CUSTOMER RECORD
-    =============================== */
-    // await User.findByIdAndUpdate(userId, {
-    //   $push: { orders: order._id },
-    //   $inc: { totalOrders: 1 },
-    // });
+    /* ================= CLEAR CART ================= */
 
-    /* ===============================
-       7️⃣ CLEAR USER CART
-    =============================== */
-    await Cart.findOneAndDelete({ user: userId });
+    await Cart.findOneAndDelete({
+      user: userId,
+    });
 
-    /* ===============================
-       8️⃣ RESPOND TO PAYSTACK
-    =============================== */
+    console.log(
+      "ORDER CREATED:",
+      order._id
+    );
+
     return res.status(200).json({
       status: "success",
-      message: "Order processed successfully",
+      message:
+        "Order processed successfully",
     });
   }
+
+  /* ======================================================
+     FAILED PAYMENT
+  ====================================================== */
+
+  if (event.event === "charge.failed") {
+
+    return res.status(200).json({
+      status: "fail",
+      message: "Payment failed",
+    });
+  }
+
+  /* ======================================================
+     DEFAULT RESPONSE
+  ====================================================== */
+
+  res.status(200).json({
+    status: "success",
+  });
 });
 
-// DELETE ORDER
-exports.deleteOrder = catchAsync(async (req, res, next) => {
+/* ======================================================
+   UPDATE ORDER STATUS
+====================================================== */
+exports.updateOrderStatus = catchAsync(async (req, res, next) => {
+
   const { id } = req.params;
 
-  const order = await orderModel.findByIdAndDelete(id);
+  const order = await Order.findById(id);
 
   if (!order) {
-    return next(new AppError("Order not found", 404));
+    return next(
+      new AppError("Order not found", 404)
+    );
   }
+
+  order.status = req.body.status;
+
+  await order.save();
 
   res.status(200).json({
     status: "success",
     data: order,
+  });
+});
+
+/* ======================================================
+   DELETE ORDER
+====================================================== */
+exports.deleteOrder = catchAsync(async (req, res, next) => {
+
+  const { id } = req.params;
+
+  const order =
+    await Order.findByIdAndDelete(id);
+
+  if (!order) {
+    return next(
+      new AppError("Order not found", 404)
+    );
+  }
+
+  res.status(200).json({
+    status: "success",
+    message:
+      "Order deleted successfully",
   });
 });
