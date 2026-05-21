@@ -12,7 +12,6 @@ const crypto = require("crypto");
    GET ALL ORDERS
 ====================================================== */
 exports.getAllOrders = catchAsync(async (req, res, next) => {
-
   const orders = await Order.find()
     .populate("user", "firstName lastName email")
     .sort("-createdAt");
@@ -28,16 +27,15 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
    GET SINGLE ORDER
 ====================================================== */
 exports.getOrder = catchAsync(async (req, res, next) => {
-
   const { id } = req.params;
 
-  const order = await Order.findById(id)
-    .populate("user", "firstName lastName email");
+  const order = await Order.findById(id).populate(
+    "user",
+    "firstName lastName email",
+  );
 
   if (!order) {
-    return next(
-      new AppError("Order not found", 404)
-    );
+    return next(new AppError("Order not found", 404));
   }
 
   res.status(200).json({
@@ -50,7 +48,6 @@ exports.getOrder = catchAsync(async (req, res, next) => {
    CREATE PAYSTACK CHECKOUT SESSION
 ====================================================== */
 exports.getCheckoutSession = catchAsync(async (req, res, next) => {
-
   const userId = req.user._id;
 
   /* ================= GET USER CART ================= */
@@ -60,17 +57,12 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
   });
 
   if (!cart || cart.items.length === 0) {
-    return next(
-      new AppError("Cart is empty", 400)
-    );
+    return next(new AppError("Cart is empty", 400));
   }
 
   /* ================= PREPARE ORDER DATA ================= */
 
-  const {
-    orderItems,
-    totalPrice,
-  } = await prepareOrderData(cart);
+  const { orderItems, totalPrice } = await prepareOrderData(cart);
 
   /* ================= PAYSTACK PAYLOAD ================= */
 
@@ -79,16 +71,14 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
 
     amount: totalPrice * 100,
 
-    callback_url:
-      `${process.env.FRONTEND_URL}/payment-success`,
+    callback_url: `${process.env.FRONTEND_URL}/payment-success`,
 
     metadata: {
       userId,
 
       orderItems,
 
-      shippingAddress:
-        req.body.shippingAddress,
+      shippingAddress: req.body.shippingAddress,
 
       totalPrice,
     },
@@ -104,25 +94,20 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
       headers: {
         "Content-Type": "application/json",
 
-        Authorization:
-          `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
 
       body: JSON.stringify(payload),
-    }
+    },
   );
 
   const data = await response.json();
 
   if (!response.ok) {
-
     console.log(data);
 
     return next(
-      new AppError(
-        data.message || "Payment initialization failed",
-        500
-      )
+      new AppError(data.message || "Payment initialization failed", 500),
     );
   }
 
@@ -132,14 +117,11 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
     status: "success",
 
     data: {
-      authorizationUrl:
-        data.data.authorization_url,
+      authorizationUrl: data.data.authorization_url,
 
-      accessCode:
-        data.data.access_code,
+      accessCode: data.data.access_code,
 
-      reference:
-        data.data.reference,
+      reference: data.data.reference,
     },
   });
 });
@@ -148,20 +130,14 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
    PAYSTACK WEBHOOK
 ====================================================== */
 exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
-
   /* ================= VERIFY SIGNATURE ================= */
 
   const hash = crypto
-    .createHmac(
-      "sha512",
-      process.env.PAYSTACK_SECRET_KEY_TEST
-    )
+    .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
     .update(JSON.stringify(req.body))
     .digest("hex");
 
-  if (
-    hash !== req.headers["x-paystack-signature"]
-  ) {
+  if (hash !== req.headers["x-paystack-signature"]) {
     return res.status(400).json({
       status: "fail",
       message: "Invalid signature",
@@ -175,59 +151,37 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
   ====================================================== */
 
   if (event.event === "charge.success") {
+    const { userId, orderItems, shippingAddress, totalPrice } =
+      event.data.metadata;
 
-    const {
-      userId,
-      orderItems,
-      shippingAddress,
-      totalPrice,
-    } = event.data.metadata;
+    const paymentMethod = event.data.channel;
 
-    const paymentMethod =
-      event.data.channel;
-
-    const paymentReference =
-      event.data.reference;
+    const paymentReference = event.data.reference;
 
     /* ================= CHECK DUPLICATE ORDER ================= */
 
-    const existingOrder =
-      await Order.findOne({
-        "paymentResult.reference":
-          paymentReference,
-      });
+    const existingOrder = await Order.findOne({
+      "paymentResult.reference": paymentReference,
+    });
 
     if (existingOrder) {
       return res.status(200).json({
         status: "success",
-        message:
-          "Order already processed",
+        message: "Order already processed",
       });
     }
 
     /* ================= UPDATE STOCK ================= */
 
     for (const item of orderItems) {
-
-      const product =
-        await Product.findById(
-          item.product
-        );
+      const product = await Product.findById(item.product);
 
       if (!product) {
-        throw new AppError(
-          "Product not found",
-          404
-        );
+        throw new AppError("Product not found", 404);
       }
 
-      if (
-        product.stock < item.quantity
-      ) {
-        throw new AppError(
-          `${product.name} stock is insufficient`,
-          400
-        );
+      if (product.stock < item.quantity) {
+        throw new AppError(`${product.name} stock is insufficient`, 400);
       }
 
       product.stock -= item.quantity;
@@ -238,7 +192,6 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
     /* ================= CREATE ORDER ================= */
 
     const order = await Order.create({
-
       user: userId,
 
       orderItems,
@@ -266,14 +219,11 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
       paymentResult: {
         id: event.data.id,
 
-        reference:
-          paymentReference,
+        reference: paymentReference,
 
-        status:
-          event.data.status,
+        status: event.data.status,
 
-        email_address:
-          event.data.customer.email,
+        email_address: event.data.customer.email,
       },
     });
 
@@ -283,15 +233,11 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
       user: userId,
     });
 
-    console.log(
-      "ORDER CREATED:",
-      order._id
-    );
+    console.log("ORDER CREATED:", order._id);
 
     return res.status(200).json({
       status: "success",
-      message:
-        "Order processed successfully",
+      message: "Order processed successfully",
     });
   }
 
@@ -300,7 +246,6 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
   ====================================================== */
 
   if (event.event === "charge.failed") {
-
     return res.status(200).json({
       status: "fail",
       message: "Payment failed",
@@ -316,19 +261,49 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
   });
 });
 
+
+/* ======================================================
+   VERIFY PAYMENT
+====================================================== */
+
+exports.verifyPayment = catchAsync(async (req, res, next) => {
+  const { reference } = req.query;
+
+  if (!reference) {
+    return next(new AppError("Payment reference missing", 400));
+  }
+
+  const response = await fetch(
+    `https://api.paystack.co/transaction/verify/${reference}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
+      },
+    },
+  );
+
+  const data = await response.json();
+
+  if (!data.status) {
+    return next(new AppError("Payment verification failed", 400));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: data.data,
+  });
+});
+
 /* ======================================================
    UPDATE ORDER STATUS
 ====================================================== */
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
-
   const { id } = req.params;
 
   const order = await Order.findById(id);
 
   if (!order) {
-    return next(
-      new AppError("Order not found", 404)
-    );
+    return next(new AppError("Order not found", 404));
   }
 
   order.status = req.body.status;
@@ -345,21 +320,16 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
    DELETE ORDER
 ====================================================== */
 exports.deleteOrder = catchAsync(async (req, res, next) => {
-
   const { id } = req.params;
 
-  const order =
-    await Order.findByIdAndDelete(id);
+  const order = await Order.findByIdAndDelete(id);
 
   if (!order) {
-    return next(
-      new AppError("Order not found", 404)
-    );
+    return next(new AppError("Order not found", 404));
   }
 
   res.status(200).json({
     status: "success",
-    message:
-      "Order deleted successfully",
+    message: "Order deleted successfully",
   });
 });

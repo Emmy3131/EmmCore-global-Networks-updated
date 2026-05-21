@@ -11,6 +11,13 @@ router.post(
   orderController.getCheckoutSession
 );
 
+/* ================= VERIFY PAYMENT ================= */
+router.get(
+  "/verify-payment",
+  authController.protect,
+  orderController.verifyPayment
+);
+
 /* ================= PAYSTACK WEBHOOK ================= */
 /* NO AUTH HERE */
 router.post(
