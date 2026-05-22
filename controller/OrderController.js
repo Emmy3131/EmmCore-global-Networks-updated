@@ -339,7 +339,7 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
    GET MY ORDERS
 ====================================================== */
 exports.getMyOrders = catchAsync(async (req, res, next) => {
-  const orders = await orderModel.find({ user: req.user._id });
+  const orders = await Order.find({ user: req.user._id });
 
   res.status(200).json({
     status: "success",
