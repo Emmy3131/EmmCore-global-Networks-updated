@@ -333,3 +333,17 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
     message: "Order deleted successfully",
   });
 });
+
+
+/* ======================================================
+   GET MY ORDERS
+====================================================== */
+exports.getMyOrders = catchAsync(async (req, res, next) => {
+  const orders = await orderModel.find({ user: req.user._id });
+
+  res.status(200).json({
+    status: "success",
+    results: orders.length,
+    data: orders,
+  });
+});

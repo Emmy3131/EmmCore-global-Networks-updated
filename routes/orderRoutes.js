@@ -8,27 +8,24 @@ const authController = require("../controller/authController");
 router.post(
   "/checkout",
   authController.protect,
-  orderController.getCheckoutSession
+  orderController.getCheckoutSession,
 );
 
 /* ================= VERIFY PAYMENT ================= */
 router.get(
   "/verify-payment",
   authController.protect,
-  orderController.verifyPayment
+  orderController.verifyPayment,
 );
 
 /* ================= PAYSTACK WEBHOOK ================= */
 /* NO AUTH HERE */
-router.post(
-  "/paystack-webhook",
-  orderController.handlePayStackWebhook
-);
+router.post("/paystack-webhook", orderController.handlePayStackWebhook);
 
 /* ================= ORDERS ================= */
-router
-  .route("/")
-  .get(authController.protect, orderController.getAllOrders);
+router.route("/").get(authController.protect, orderController.getAllOrders);
+
+router.get("/my-orders", authController.protect, orderController.getMyOrders);
 
 router
   .route("/:id")
@@ -38,7 +35,7 @@ router
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }),
-  orderController.handlePayStackWebhook
+  orderController.handlePayStackWebhook,
 );
 
 module.exports = router;
