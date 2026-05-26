@@ -222,7 +222,7 @@ exports.restrictTo = (...roles) => {
 };
 
 exports.getMe = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id);
+  const user = await User.findById(req.user._id);
 
   if (!user) {
     return next(new AppError("User not found", 404));
