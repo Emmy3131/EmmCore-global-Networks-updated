@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const { promisify } = require("util");
 const crypto = require("crypto");
 const Email = require("./../utils/email");
+const orderModel = require("../model/OrderModel");
 
 
 const signToken = (id) => {
@@ -219,3 +220,18 @@ exports.restrictTo = (...roles) => {
     next();
   };
 };
+
+exports.getMe = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      user,
+    },
+  });
+});
