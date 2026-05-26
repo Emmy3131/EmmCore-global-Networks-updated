@@ -135,11 +135,13 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
 // ===============================
 exports.removeFromCart = catchAsync(async (req, res, next) => {
 
-  const { productId } = req.body;
+  const productId = req.params.id;
 
- const cart = await Cart.findById(req.params.id);
+  const cart = await Cart.findOne({ user: req.user.id });
 
-  if (!cart) return next(new AppError("Cart not found", 404));
+  if (!cart) {
+    return next(new AppError("Cart not found", 404));
+  }
 
   cart.items = cart.items.filter(
     item => item.product.toString() !== productId
