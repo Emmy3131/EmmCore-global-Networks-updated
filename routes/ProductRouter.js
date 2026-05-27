@@ -2,6 +2,9 @@ const express = require('express')
 const router = express.Router()
 const productController = require('../controller/ProductController')
 const authController = require('./../controller/authController')
+
+//GetProductByCategory
+router.get('/category/:category', productController.getProductsByCategory)
 // CREATE + GET
 router
   .route('/')

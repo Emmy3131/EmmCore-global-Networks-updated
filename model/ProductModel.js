@@ -43,6 +43,21 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
+    isTrending: {
+      type: Boolean,
+      default: false,
+    },
+
+    isFlashSale: {
+      type: Boolean,
+      default: false,
+    },
+
+    oldPrice: {
+      type: Number,
+      min: [0, "Old price cannot be negative"],
+    },
+
     stock: {
       type: Number,
       required: [true, "Product stock is required"],

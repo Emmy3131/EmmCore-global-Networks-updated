@@ -92,3 +92,18 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
       message: "Product deleted successfully"
     })
     } )
+
+    // ✅ GET PRODUCTS BY CATEGORY
+   exports.getProductsByCategory = async (req, res) => {
+  const products = await Product.find({
+    category: req.params.categoryId,
+  }).populate("category");
+
+  res.status(200).json({
+    status: "success",
+    results: products.length,
+    data: {
+      products,
+    },
+  });
+};
