@@ -91,14 +91,19 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 });
 
 // ✅ GET PRODUCTS BY CATEGORY
-exports.getProductsByCategory = catchAsync(async (req, res, next) => {
-  const { categoryId } = req.params;
+exports.getProductsByCategory = catchAsync(async (req, res) => {
+  const { slug } = req.params;
 
-  const products = await Product.find({ category: categoryId });
+  const products = await Product.find()
+    .populate({
+      path: "category",
+      match: { slug: slug },
+    });
 
-  res.status(200).json({
+  const filtered = products.filter(p => p.category !== null);
+
+  res.json({
     status: "success",
-    results: products.length,
-    data: products,
+    data: filtered,
   });
 });
