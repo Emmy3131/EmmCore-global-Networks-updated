@@ -1,14 +1,15 @@
-const Product = require('../model/ProductModel')
-const ApiFeatures = require('../utils/ApiFeatures')
-const catchAsync = require ("../utils/catchAsync")
-const AppError = require('../utils/appError')
-
+const Product = require("../model/ProductModel");
+const ApiFeatures = require("../utils/ApiFeatures");
+const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/appError");
 
 // ✅ GET ALL PRODUCTS
 
 exports.getProducts = catchAsync(async (req, res, next) => {
-
-  const features = new ApiFeatures(Product.find().populate('category'), req.query)
+  const features = new ApiFeatures(
+    Product.find().populate("category"),
+    req.query,
+  )
     .filter()
     .sort()
     .limitFields()
@@ -19,17 +20,13 @@ exports.getProducts = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     results: products.length,
-    data: products
+    data: products,
   });
-
 });
-
-
-    
 
 // ✅ GET SINGLE PRODUCT
 exports.getProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id).populate('category');
+  const product = await Product.findById(req.params.id).populate("category");
 
   if (!product) {
     return next(new AppError("Product not found", 404));
@@ -37,73 +34,71 @@ exports.getProduct = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
-    data: product
+    data: product,
   });
 });
-     
 
 // ✅ CREATE PRODUCT
 exports.createProduct = catchAsync(async (req, res, next) => {
-  
-  const { image, name, description, price, category, stock } = req.body
+  const { image, name, description, price, category, stock } = req.body;
 
-    const newProduct = new Product({
-      image,
-      name,
-      description,
-      price,
-      category,
-      stock
-    })
+  const newProduct = new Product({
+    image,
+    name,
+    description,
+    price,
+    category,
+    stock,
+  });
 
-    const savedProduct = await newProduct.save()
-    res.status(201).json({
-      status: "success",
-      data: savedProduct
-    })
-  }
-)
+  const savedProduct = await newProduct.save();
+  res.status(201).json({
+    status: "success",
+    data: savedProduct,
+  });
+});
 
 // ✅ UPDATE PRODUCT
 exports.updateProduct = catchAsync(async (req, res, next) => {
-  const { id } = req.params
-    const updates = req.body
-    const updatedProduct = await Product.findByIdAndUpdate(id, updates, { new: true, runValidators: true })
+  const { id } = req.params;
+  const updates = req.body;
+  const updatedProduct = await Product.findByIdAndUpdate(id, updates, {
+    new: true,
+    runValidators: true,
+  });
 
-    if (!updatedProduct) {
-      return next(new AppError("Product not found", 404));
-    }
-    res.status(200).json({
-      status: "success",
-      data: updatedProduct
-    })
-  } )
+  if (!updatedProduct) {
+    return next(new AppError("Product not found", 404));
+  }
+  res.status(200).json({
+    status: "success",
+    data: updatedProduct,
+  });
+});
 
 // ✅ DELETE PRODUCT
 exports.deleteProduct = catchAsync(async (req, res, next) => {
-  const { id } = req.params
+  const { id } = req.params;
 
-    const deletedProduct = await Product.findByIdAndDelete(id)
-    if (!deletedProduct) {
-      return next(new AppError("Product not found", 404));
-    }
-    res.status(200).json({
-      status: "success",
-      message: "Product deleted successfully"
-    })
-    } )
+  const deletedProduct = await Product.findByIdAndDelete(id);
+  if (!deletedProduct) {
+    return next(new AppError("Product not found", 404));
+  }
+  res.status(200).json({
+    status: "success",
+    message: "Product deleted successfully",
+  });
+});
 
-    // ✅ GET PRODUCTS BY CATEGORY
-   exports.getProductsByCategory = async (req, res) => {
-  const products = await Product.find({
-    category: req.params.categoryId,
-  }).populate("category");
+// ✅ GET PRODUCTS BY CATEGORY
+exports.getProductsByCategory = catchAsync(async (req, res, next) => {
+  const { categoryId } = req.params;
+
+  const products = await Product.find({ category: categoryId });
 
   res.status(200).json({
     status: "success",
     results: products.length,
-    data: {
-      products,
-    },
+    data: products,
   });
-};
+});
