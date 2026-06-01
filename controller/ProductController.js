@@ -93,26 +93,12 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 
 // ✅ GET PRODUCTS BY CATEGORY
 exports.getProductsByCategory = catchAsync(async (req, res) => {
-  const { slug } = req.params;
-  console.log("CATEGORY SLUG:", slug);
-
-  const category = await Category.findOne({ slug });
-  console.log("CATEGORY:", category);
-
-  if (!category) {
-    return res.status(404).json({
-      status: "fail",
-      message: "Category not found",
-    });
-  }
-
   const products = await Product.find({
-    category: category._id,
+    category: req.params.id,
   }).populate("category");
 
   res.status(200).json({
     status: "success",
-    results: products.length,
     data: products,
   });
 });
