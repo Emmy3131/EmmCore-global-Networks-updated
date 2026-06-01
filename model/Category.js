@@ -13,7 +13,12 @@ const categorySchema = new mongoose.Schema(
       lowercase: true
     },
 
-    slug: String,
+    slug: {
+      type: String,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
 
     image: {
       type: String
@@ -29,10 +34,10 @@ const categorySchema = new mongoose.Schema(
 );
 
 // AUTO CREATE SLUG
-// categorySchema.pre("save", function (next) {
-//   this.slug = slugify(this.name, { lower: true });
-//   next();
-// });
+categorySchema.pre("save", function (next) {
+  this.slug = slugify(this.name, { lower: true });
+  next();
+});
 
 const Category = mongoose.model("Category", categorySchema);
 

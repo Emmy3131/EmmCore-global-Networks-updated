@@ -2,6 +2,7 @@ const Product = require("../model/ProductModel");
 const ApiFeatures = require("../utils/ApiFeatures");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
+const Category = require("../model/Category");
 
 // ✅ GET ALL PRODUCTS
 
@@ -94,16 +95,22 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 exports.getProductsByCategory = catchAsync(async (req, res) => {
   const { slug } = req.params;
 
-  const products = await Product.find()
-    .populate({
-      path: "category",
-      match: { slug: slug },
+  const category = await Category.findOne({ slug });
+
+  if (!category) {
+    return res.status(404).json({
+      status: "fail",
+      message: "Category not found",
     });
+  }
 
-  const filtered = products.filter(p => p.category !== null);
+  const products = await Product.find({
+    category: category._id,
+  }).populate("category");
 
-  res.json({
+  res.status(200).json({
     status: "success",
-    data: filtered,
+    results: products.length,
+    data: products,
   });
 });
