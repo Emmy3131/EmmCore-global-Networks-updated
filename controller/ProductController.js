@@ -94,8 +94,10 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 // ✅ GET PRODUCTS BY CATEGORY
 exports.getProductsByCategory = catchAsync(async (req, res) => {
   const { slug } = req.params;
+  console.log("CATEGORY SLUG:", slug);
 
   const category = await Category.findOne({ slug });
+  console.log("CATEGORY:", category);
 
   if (!category) {
     return res.status(404).json({
