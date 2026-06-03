@@ -9,6 +9,7 @@ router.get("/isTrending", productController.getTrendingProducts);
 router.get("/isFlashSale", productController.getFlashSaleProducts);
 router.get("/new-arrivals", productController.getNewArrivals);
 router.get("/search", productController.searchProducts);
+router.get("/related/:id", productController.getRelatedProducts);
 // CREATE + GET
 router
   .route('/')

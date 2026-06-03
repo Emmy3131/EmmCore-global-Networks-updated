@@ -134,7 +134,7 @@ exports.getFlashSaleProducts = catchAsync(async (req, res) => {
 exports.getNewArrivals = catchAsync(async (req, res) => {
   const products = await Product.find()
     .sort({ createdAt: -1 })
-    .limit(10)
+    .limit(5)
     .populate("category");
 
     res.status(200).json({
@@ -160,3 +160,21 @@ exports.searchProducts = catchAsync(async (req, res) => {
     data: products,
   });
 });
+
+exports.getRelatedProducts = catchAsync(
+  async (req, res) => {
+    const product = await Product.findById(
+      req.params.id
+    );
+
+    const related = await Product.find({
+      category: product.category,
+      _id: { $ne: product._id },
+    }).limit(8);
+
+    res.status(200).json({
+      status: "success",
+      data: related,
+    });
+  }
+);
