@@ -130,3 +130,18 @@ exports.getFlashSaleProducts = catchAsync(async (req, res) => {
     data: products,
   });
 });
+
+exports.getNewArrivals = catchAsync(async (req, res) => {
+  const products = await Product.find()
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .populate("category");
+
+    res.status(200).json({
+      status: "success",
+      results: products.length,
+      data: products,
+    });
+});
+
+
