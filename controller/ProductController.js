@@ -116,3 +116,17 @@ exports.getTrendingProducts = catchAsync(async (req, res) => {
     data: products,
   });
 });
+
+exports.getFlashSaleProducts = catchAsync(async (req, res) => {
+  const now = new Date();
+  const products = await Product.find({
+    isFlashSale: true,
+    flashSaleEndAt: { $gt: now },
+  }).populate("category");
+
+  res.status(200).json({
+    status: "success",
+    results: products.length,
+    data: products,
+  });
+});

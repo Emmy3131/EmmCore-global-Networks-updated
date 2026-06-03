@@ -6,6 +6,7 @@ const authController = require('./../controller/authController')
 //GetProductByCategory
 router.get("/category/:id", productController.getProductsByCategory);
 router.get("/isTrending", productController.getTrendingProducts);
+router.get("/isFlashSale", productController.getFlashSaleProducts);
 // CREATE + GET
 router
   .route('/')

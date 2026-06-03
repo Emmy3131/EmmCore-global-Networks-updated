@@ -53,6 +53,10 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
+    flashSalePrice: Number,
+
+    flashSaleEndAt: Date,
+
     oldPrice: {
       type: Number,
       min: [0, "Old price cannot be negative"],
