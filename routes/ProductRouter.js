@@ -8,6 +8,7 @@ router.get("/category/:id", productController.getProductsByCategory);
 router.get("/isTrending", productController.getTrendingProducts);
 router.get("/isFlashSale", productController.getFlashSaleProducts);
 router.get("/new-arrivals", productController.getNewArrivals);
+router.get("/search", productController.searchProducts);
 // CREATE + GET
 router
   .route('/')

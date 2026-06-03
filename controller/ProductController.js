@@ -145,3 +145,18 @@ exports.getNewArrivals = catchAsync(async (req, res) => {
 });
 
 
+exports.searchProducts = catchAsync(async (req, res) => {
+  const keyword = req.query.keyword;
+
+  const products = await Product.find({
+    name: {
+      $regex: keyword,
+      $options: "i",
+    },
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: products,
+  });
+});
