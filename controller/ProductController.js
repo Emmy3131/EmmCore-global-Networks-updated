@@ -104,3 +104,15 @@ exports.getProductsByCategory = catchAsync(async (req, res) => {
     data: products,
   });
 });
+
+exports.getTrendingProducts = catchAsync(async (req, res) => {
+  const products = await Product.find({
+    isTrending: true,
+  }).populate("category");
+
+  res.status(200).json({
+    status: "success",
+    results: products.length,
+    data: products,
+  });
+});
