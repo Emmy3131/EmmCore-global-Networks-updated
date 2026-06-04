@@ -1,4 +1,4 @@
-const NewsletterModel = require("../models/NewsLetterModel");
+const NewsletterModel = require("../model/NewsLetterModel");
 const AppError = require("../utils/appError");
 
 exports.subscribeNewsletter = async (req, res, next) => {

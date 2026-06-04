@@ -10,7 +10,7 @@ const orderRouter = require("./routes/orderRoutes");
 const cartRouter = require("./routes/cartRoutes");
 const categoryRoutes = require("./routes/CategoryRoutes");
 const statsRoutes = require("./routes/statsRoutes");
-const newsletterRoutes = require("./routes/NewsletterSub");
+const newsletterRoutes = require("./routes/NewsletterSubRoutes");
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");
