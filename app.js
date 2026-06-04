@@ -10,6 +10,7 @@ const orderRouter = require("./routes/orderRoutes");
 const cartRouter = require("./routes/cartRoutes");
 const categoryRoutes = require("./routes/CategoryRoutes");
 const statsRoutes = require("./routes/statsRoutes");
+const newsletterRoutes = require("./routes/NewsletterSub");
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");
@@ -74,6 +75,7 @@ app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/stats", statsRoutes);
+app.use("/api/v1/newsletter", newsletterRoutes);
 /* ======================
    404 HANDLER
 ====================== */
