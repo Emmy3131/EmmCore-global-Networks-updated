@@ -134,7 +134,7 @@ exports.getFlashSaleProducts = catchAsync(async (req, res) => {
 exports.getNewArrivals = catchAsync(async (req, res) => {
   const products = await Product.find()
     .sort({ createdAt: -1 })
-    .limit(5)
+    .limit(8)
     .populate("category");
 
     res.status(200).json({
