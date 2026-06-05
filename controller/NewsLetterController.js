@@ -27,6 +27,19 @@ exports.subscribeNewsletter = async (req, res, next) => {
     res.status(201).json({
       status: "success",
       data: newSubscription,
+      message: "You have successfully subscribed to the newsletter",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getAllSubscribers = async (req, res, next) => {
+  try {
+    const subscribers = await NewsletterModel.find();
+    res.status(200).json({
+      status: "success",
+      data: subscribers,
     });
   } catch (error) {
     next(error);
