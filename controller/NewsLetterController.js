@@ -1,4 +1,5 @@
 const NewsletterModel = require("../model/NewsLetterModel");
+const { countDocuments } = require("../model/ProductModel");
 const AppError = require("../utils/appError");
 
 exports.subscribeNewsletter = async (req, res, next) => {
@@ -34,14 +35,61 @@ exports.subscribeNewsletter = async (req, res, next) => {
   }
 };
 
-exports.getAllSubscribers = async (req, res, next) => {
+
+exports.getAllSubscribers = async (req, res) => {
   try {
-    const subscribers = await NewsletterModel.find();
+    const subscribers = await NewsletterModel
+      .find()
+      .sort({ createdAt: -1 });
+
     res.status(200).json({
       status: "success",
-      data: subscribers,
+      count: subscribers.length,
+      subscribers,
     });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      status: "fail",
+      message: error.message,
+    });
+  }
+};
+
+exports.deleteSubscriber = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const subscriber = await NewsletterModel.findByIdAndDelete(id);
+
+    if (!subscriber) {  
+      return res.status(404).json({
+        status: "fail",
+        message: "Subscriber not found",
+      });
+    }
+    res.status(200).json({
+      status: "success",
+      message: "Subscriber deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "fail",
+      message: error.message,
+    });
+  }
+};
+
+exports.getSubscriberCount = async (req, res) => {
+  try {
+    const count = await NewsletterModel.countDocuments();
+
+    res.status(200).json({
+      status: "success",
+      count,
+    });
+  }catch (error) {
+    res.status(500).json({
+      status: "fail",
+      message: error.message,
+    });
   }
 };
