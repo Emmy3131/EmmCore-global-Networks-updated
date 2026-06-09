@@ -1,4 +1,4 @@
-const HeroBannerModel = require("../model/HeroBannerModel");
+const HeroBannerModel = require("../model/HeroModel");
 const AppError = require("../utils/appError");
 
 // ✅ GET Active HERO BANNERS
