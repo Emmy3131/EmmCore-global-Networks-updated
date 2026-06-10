@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
-const PageController = require("../controllers/PageController");
-const authController = require("../controllers/authController");
+const PageController = require("../controller/PageController");
+const authController = require("../controller/authController");
 
 /* ================= ADMIN CREATE PAGE ================= */
 router
