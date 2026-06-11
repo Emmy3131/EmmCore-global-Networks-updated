@@ -31,10 +31,16 @@ const pageSchema = new mongoose.Schema(
       enum: ["draft", "published", "archived"],
       default: "draft",
     },
+
+    section: {
+      type: String,
+      enum: ["company", "help", "legal", "affiliate"],
+      default: "company",
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("Page", pageSchema);
