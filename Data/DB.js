@@ -35,6 +35,7 @@ const connectDB = async () => {
     };
 
     cached.promise = mongoose
+    
       .connect(process.env.DATABASE, opts)
       .then((mongooseInstance) => {
         console.log(
