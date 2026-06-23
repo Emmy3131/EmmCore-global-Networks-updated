@@ -4,7 +4,7 @@ const CartController = require("../controller/CartController");
 const authController = require("../controller/authController");
 
 //Protect all routes after this middleware
-// router.use(authController.protect);
+router.use(authController.protect);
 // CREATE + GET
 router
   .route("/")
