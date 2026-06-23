@@ -3,7 +3,6 @@ const Product = require("../model/ProductModel");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 
-
 // ===============================
 // HELPER → CALCULATE CART TOTALS
 // ===============================
@@ -11,18 +10,16 @@ const calculateCartTotals = (cart) => {
   cart.totalItems = 0;
   cart.totalPrice = 0;
 
-  cart.items.forEach(item => {
+  cart.items.forEach((item) => {
     cart.totalItems += item.quantity;
     cart.totalPrice += item.quantity * item.price;
   });
 };
 
-
 // ===============================
 // ADD TO CART
 // ===============================
 exports.addToCart = catchAsync(async (req, res, next) => {
-
   const { productId, quantity = 1 } = req.body;
   const userId = req.user._id;
 
@@ -35,7 +32,6 @@ exports.addToCart = catchAsync(async (req, res, next) => {
 
   if (!product) {
     return next(new AppError("Product not found", 404));
- 
   }
 
   // Find or create cart
@@ -44,13 +40,13 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   if (!cart) {
     cart = await Cart.create({
       user: userId,
-      items: []
+      items: [],
     });
   }
 
   // Check existing item
   const existingItem = cart.items.find(
-    item => item.product.toString() === productId
+    (item) => item.product.toString() === productId,
   );
 
   if (existingItem) {
@@ -61,7 +57,7 @@ exports.addToCart = catchAsync(async (req, res, next) => {
       name: product.name,
       image: product.image,
       price: product.price,
-      quantity
+      quantity,
     });
   }
 
@@ -72,7 +68,7 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     message: "Product added to cart",
-    data: cart
+    data: cart,
   });
 });
 
@@ -80,9 +76,9 @@ exports.addToCart = catchAsync(async (req, res, next) => {
 // GET CART
 // ===============================
 exports.getCart = catchAsync(async (req, res, next) => {
-
-  const cart = await Cart.findOne({ user: req.user._id })
-    .populate("items.product");
+  const cart = await Cart.findOne({ user: req.user._id }).populate(
+    "items.product",
+  );
 
   if (!cart) {
     return next(new AppError("Cart is empty", 404));
@@ -90,7 +86,7 @@ exports.getCart = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
-    data: cart
+    data: cart,
   });
 });
 
@@ -98,7 +94,6 @@ exports.getCart = catchAsync(async (req, res, next) => {
 // Update CART
 // ===============================
 exports.updateCartItem = catchAsync(async (req, res, next) => {
-
   const { productId, quantity } = req.body;
 
   if (!productId || quantity < 1) {
@@ -109,15 +104,19 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
 
   if (!cart) return next(new AppError("Cart not found", 404));
 
-  const item = cart.items.find(
-    item => item.product.toString() === productId
-  );
+  const item = cart.items.find((item) => item.product.toString() === productId);
 
   if (!item) {
     return next(new AppError("Item not in cart", 404));
   }
 
-  item.quantity+= quantity;
+  item.quantity = item.quantity + quantity;
+
+  if (item.quantity < 1) {
+    cart.items = cart.items.filter(
+      (item) => item.product.toString() !== productId,
+    );
+  }
 
   calculateCartTotals(cart);
 
@@ -126,7 +125,7 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     message: "Cart updated",
-    data: cart
+    data: cart,
   });
 });
 
@@ -134,7 +133,6 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
 // Remove from CART
 // ===============================
 exports.removeFromCart = catchAsync(async (req, res, next) => {
-
   const productId = req.params.id;
 
   const cart = await Cart.findOne({ user: req.user.id });
@@ -144,7 +142,7 @@ exports.removeFromCart = catchAsync(async (req, res, next) => {
   }
 
   cart.items = cart.items.filter(
-    item => item.product.toString() !== productId
+    (item) => item.product.toString() !== productId,
   );
 
   calculateCartTotals(cart);
@@ -154,7 +152,7 @@ exports.removeFromCart = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     message: "Item removed",
-    data: cart
+    data: cart,
   });
 });
 
@@ -162,7 +160,6 @@ exports.removeFromCart = catchAsync(async (req, res, next) => {
 // Clear CART
 // ===============================
 exports.clearCart = catchAsync(async (req, res, next) => {
-
   const cart = await Cart.findOne({ user: req.user._id });
 
   if (!cart) return next(new AppError("Cart not found", 404));
@@ -175,6 +172,6 @@ exports.clearCart = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
-    message: "Cart cleared"
+    message: "Cart cleared",
   });
 });

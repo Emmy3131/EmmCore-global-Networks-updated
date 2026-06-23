@@ -11,7 +11,6 @@ router
   .get(CartController.getCart)
   .post(CartController.addToCart)
   .delete(CartController.clearCart);
-
 // UPDATE + DELETE
 router
   .route("/:id")
