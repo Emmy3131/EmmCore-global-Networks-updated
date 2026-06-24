@@ -96,25 +96,31 @@ exports.getCart = catchAsync(async (req, res, next) => {
 exports.updateCartItem = catchAsync(async (req, res, next) => {
   const { productId, quantity } = req.body;
 
-  if (!productId || quantity < 1) {
+  if (!productId || typeof quantity !== "number") {
     return next(new AppError("Invalid quantity", 400));
   }
 
-  const cart = await Cart.findById(req.params.id);
+  const cart = await Cart.findOne({
+    user: req.user.id,
+  });
 
-  if (!cart) return next(new AppError("Cart not found", 404));
+  if (!cart) {
+    return next(new AppError("Cart not found", 404));
+  }
 
-  const item = cart.items.find((item) => item.product.toString() === productId);
+  const item = cart.items.find(
+    (item) => item.product.toString() === productId
+  );
 
   if (!item) {
     return next(new AppError("Item not in cart", 404));
   }
 
-  item.quantity = item.quantity + quantity;
+  item.quantity += quantity;
 
   if (item.quantity < 1) {
     cart.items = cart.items.filter(
-      (item) => item.product.toString() !== productId,
+      (item) => item.product.toString() !== productId
     );
   }
 

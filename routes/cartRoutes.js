@@ -5,6 +5,9 @@ const authController = require("../controller/authController");
 
 //Protect all routes after this middleware
 router.use(authController.protect);
+
+
+
 // CREATE + GET
 router
   .route("/")
@@ -14,8 +17,10 @@ router
 // UPDATE + DELETE
 router
   .route("/:id")
-  .patch(CartController.updateCartItem)
+  // .patch(CartController.updateCartItem)
   .delete(CartController.removeFromCart);
+
+router.patch("/update", CartController.updateCartItem);
 
 
 
