@@ -93,7 +93,10 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    isPaid: true,
+    isPaid: {
+  type: Boolean,
+  default: false,
+},
     paidAt: Date,
 
 
