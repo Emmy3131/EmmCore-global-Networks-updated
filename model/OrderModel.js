@@ -39,7 +39,7 @@ const orderSchema = new mongoose.Schema(
       address: String,
       city: String,
       state: String,
-      phone: String, 
+      phone: String,
     },
 
     // 💳 Payment
@@ -81,15 +81,16 @@ const orderSchema = new mongoose.Schema(
     },
 
     // 📦 Order Status
-    orderStatus: {
+    paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "processing", "shipped", "delivered", "cancelled"],
+      enum: [ "pending", "paid", "failed", "refunded"],
       default: "pending",
     },
 
-    isPaid: {
-      type: Boolean,
-      default: false,
+    orderStatus: {
+      type: String,
+      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
+      default: "pending",
     },
 
     paidAt: Date,
@@ -103,7 +104,7 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("Order", orderSchema);
