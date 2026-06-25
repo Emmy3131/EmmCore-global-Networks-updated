@@ -14,6 +14,7 @@ const crypto = require("crypto");
 exports.getAllOrders = catchAsync(async (req, res, next) => {
   const orders = await Order.find()
     .populate("user", "firstName lastName email")
+    .populate("orderItems.product")
     .sort("-createdAt");
 
   res.status(200).json({
@@ -27,12 +28,9 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
    GET SINGLE ORDER
 ====================================================== */
 exports.getOrder = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-
-  const order = await Order.findById(id).populate(
-    "user",
-    "firstName lastName email",
-  );
+  const order = await Order.findById(req.params.id)
+    .populate("user", "firstName lastName email")
+    .populate("orderItems.product");
 
   if (!order) {
     return next(new AppError("Order not found", 404));
@@ -200,9 +198,7 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
 
       paymentMethod,
 
-      paymentStatus: "paid",
-
-      status: "processing",
+      orderStatus: "processing",
 
       isPaid: true,
 
@@ -261,7 +257,6 @@ exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
   });
 });
 
-
 /* ======================================================
    VERIFY PAYMENT
 ====================================================== */
@@ -299,6 +294,7 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
 ====================================================== */
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   const { id } = req.params;
+  const { status } = req.body;
 
   const order = await Order.findById(id);
 
@@ -306,7 +302,16 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     return next(new AppError("Order not found", 404));
   }
 
-  order.status = req.body.status;
+  order.orderStatus = status;
+
+  if (status === "delivered") {
+    order.isDelivered = true;
+    order.deliveredAt = Date.now();
+  }
+
+  if (status === "cancelled") {
+    order.isDelivered = false;
+  }
 
   await order.save();
 
@@ -334,12 +339,15 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
   });
 });
 
-
 /* ======================================================
    GET MY ORDERS
 ====================================================== */
 exports.getMyOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id });
+  const orders = await Order.find({
+    user: req.user._id,
+  })
+    .populate("orderItems.product")
+    .sort("-createdAt");
 
   res.status(200).json({
     status: "success",

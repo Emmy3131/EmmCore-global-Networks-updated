@@ -35,6 +35,7 @@ const orderSchema = new mongoose.Schema(
 
     // 🚚 Shipping Address
     shippingAddress: {
+      fullName: String,
       address: String,
       city: String,
       state: String,
@@ -44,7 +45,7 @@ const orderSchema = new mongoose.Schema(
     // 💳 Payment
     paymentMethod: {
       type: String,
-      //enum: ["card", "bank_transfer", "cash_on_delivery"],
+      enum: ["paystack"],
       required: true,
     },
 
