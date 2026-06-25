@@ -30,7 +30,8 @@ router.get("/my-orders", authController.protect, orderController.getMyOrders);
 router
   .route("/:id")
   .get(authController.protect, orderController.getOrder)
-  .delete(authController.protect, orderController.deleteOrder);
+  .delete(authController.protect, orderController.deleteOrder)
+  .patch(orderController.updateOrderStatus);
 
 router.post(
   "/webhook",
