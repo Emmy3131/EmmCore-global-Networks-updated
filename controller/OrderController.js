@@ -94,7 +94,7 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
     orderItems,
     shippingAddress: req.body.shippingAddress,
     paymentMethod: "paystack",
-    paymentStatus: "unpaid",
+    paymentStatus: "pending",
     orderStatus: "pending",
     itemsPrice: totalPrice,
     taxPrice: 0,
