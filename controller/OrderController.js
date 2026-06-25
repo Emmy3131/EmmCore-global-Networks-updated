@@ -48,219 +48,168 @@ exports.getOrder = catchAsync(async (req, res, next) => {
 exports.getCheckoutSession = catchAsync(async (req, res, next) => {
   const userId = req.user._id;
 
-  /* ================= GET USER CART ================= */
-
-  const cart = await Cart.findOne({
-    user: userId,
-  });
+  const cart = await Cart.findOne({ user: userId });
 
   if (!cart || cart.items.length === 0) {
     return next(new AppError("Cart is empty", 400));
   }
 
-  /* ================= PREPARE ORDER DATA ================= */
-
   const { orderItems, totalPrice } = await prepareOrderData(cart);
-
-  /* ================= PAYSTACK PAYLOAD ================= */
 
   const payload = {
     email: req.user.email,
-
     amount: totalPrice * 100,
-
     callback_url: `${process.env.FRONTEND_URL}/payment-success`,
-
     metadata: {
-      userId,
-
-      orderItems,
-
+      userId: userId.toString(),
       shippingAddress: req.body.shippingAddress,
-
       totalPrice,
     },
   };
-
-  /* ================= INITIALIZE PAYMENT ================= */
 
   const response = await fetch(
     "https://api.paystack.co/transaction/initialize",
     {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
-
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
-
       body: JSON.stringify(payload),
-    },
+    }
   );
 
   const data = await response.json();
 
   if (!response.ok) {
-    console.log(data);
-
-    return next(
-      new AppError(data.message || "Payment initialization failed", 500),
-    );
+    return next(new AppError(data.message || "Payment initialization failed", 500));
   }
 
-  /* ================= RESPONSE ================= */
+  /* ======================================================
+     CREATE PENDING ORDER BEFORE PAYMENT
+  ====================================================== */
+
+  await Order.create({
+    user: userId,
+    orderItems,
+    shippingAddress: req.body.shippingAddress,
+    paymentMethod: "paystack",
+    paymentStatus: "unpaid",
+    orderStatus: "pending",
+    itemsPrice: totalPrice,
+    taxPrice: 0,
+    shippingPrice: 0,
+    totalPrice,
+    paymentResult: {
+      reference: data.data.reference,
+    },
+  });
 
   res.status(200).json({
     status: "success",
-
     data: {
       authorizationUrl: data.data.authorization_url,
-
       accessCode: data.data.access_code,
-
       reference: data.data.reference,
     },
   });
 });
 
 /* ======================================================
-   PAYSTACK WEBHOOK
+   PAYSTACK WEBHOOK (FIXED + SAFE)
 ====================================================== */
-exports.handlePayStackWebhook = catchAsync(async (req, res, next) => {
-  /* ================= VERIFY SIGNATURE ================= */
+exports.handlePayStackWebhook = async (req, res) => {
+  try {
+    /* ================= VERIFY SIGNATURE ================= */
+    const hash = crypto
+      .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
 
-  const hash = crypto
-    .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
-    .update(JSON.stringify(req.body))
-    .digest("hex");
+    if (hash !== req.headers["x-paystack-signature"]) {
+      return res.sendStatus(401);
+    }
 
-  if (hash !== req.headers["x-paystack-signature"]) {
-    return res.status(400).json({
-      status: "fail",
-      message: "Invalid signature",
-    });
-  }
+    const event = req.body;
 
-  const event = req.body;
+    /* ======================================================
+       SUCCESS PAYMENT
+    ====================================================== */
+    if (event.event === "charge.success") {
+      const reference = event.data.reference;
 
-  /* ======================================================
-     SUCCESSFUL PAYMENT
-  ====================================================== */
-
-  if (event.event === "charge.success") {
-    const { userId, orderItems, shippingAddress, totalPrice } =
-      event.data.metadata;
-
-    const paymentMethod = event.data.channel;
-
-    const paymentReference = event.data.reference;
-
-    /* ================= CHECK DUPLICATE ORDER ================= */
-
-    const existingOrder = await Order.findOne({
-      "paymentResult.reference": paymentReference,
-    });
-
-    if (existingOrder) {
-      return res.status(200).json({
-        status: "success",
-        message: "Order already processed",
+      const order = await Order.findOne({
+        "paymentResult.reference": reference,
       });
-    }
 
-    /* ================= UPDATE STOCK ================= */
+      if (!order) return res.sendStatus(200);
 
-    for (const item of orderItems) {
-      const product = await Product.findById(item.product);
-
-      if (!product) {
-        throw new AppError("Product not found", 404);
+      // prevent duplicate processing
+      if (order.paymentStatus === "paid") {
+        return res.sendStatus(200);
       }
 
-      if (product.stock < item.quantity) {
-        throw new AppError(`${product.name} stock is insufficient`, 400);
+      /* ================= UPDATE STOCK ================= */
+      for (const item of order.orderItems) {
+        const product = await Product.findById(item.product);
+
+        if (!product) continue;
+
+        if (product.stock >= item.quantity) {
+          product.stock -= item.quantity;
+          await product.save();
+        }
       }
 
-      product.stock -= item.quantity;
+      /* ================= UPDATE ORDER ================= */
+      order.paymentStatus = "paid";
+      order.orderStatus = "processing";
+      order.isPaid = true;
+      order.paidAt = Date.now();
 
-      await product.save();
-    }
-
-    /* ================= CREATE ORDER ================= */
-
-    const order = await Order.create({
-      user: userId,
-
-      orderItems,
-
-      shippingAddress,
-
-      paymentMethod,
-
-      orderStatus: "processing",
-
-      isPaid: true,
-
-      paidAt: Date.now(),
-
-      itemsPrice: totalPrice,
-
-      taxPrice: 0,
-
-      shippingPrice: 0,
-
-      totalPrice,
-
-      paymentResult: {
+      order.paymentResult = {
         id: event.data.id,
-
-        reference: paymentReference,
-
+        reference,
         status: event.data.status,
-
         email_address: event.data.customer.email,
-      },
-    });
+      };
 
-    /* ================= CLEAR CART ================= */
+      await order.save();
 
-    await Cart.findOneAndDelete({
-      user: userId,
-    });
+      /* ================= CLEAR CART ================= */
+      await Cart.findOneAndDelete({ user: order.user });
 
-    console.log("ORDER CREATED:", order._id);
+      return res.sendStatus(200);
+    }
 
-    return res.status(200).json({
-      status: "success",
-      message: "Order processed successfully",
-    });
+    /* ======================================================
+       FAILED PAYMENT
+    ====================================================== */
+    if (event.event === "charge.failed") {
+      const reference = event.data.reference;
+
+      const order = await Order.findOne({
+        "paymentResult.reference": reference,
+      });
+
+      if (order) {
+        order.paymentStatus = "failed";
+        await order.save();
+      }
+
+      return res.sendStatus(200);
+    }
+
+    return res.sendStatus(200);
+  } catch (err) {
+    console.error("Webhook error:", err);
+    return res.sendStatus(200);
   }
-
-  /* ======================================================
-     FAILED PAYMENT
-  ====================================================== */
-
-  if (event.event === "charge.failed") {
-    return res.status(200).json({
-      status: "fail",
-      message: "Payment failed",
-    });
-  }
-
-  /* ======================================================
-     DEFAULT RESPONSE
-  ====================================================== */
-
-  res.status(200).json({
-    status: "success",
-  });
-});
+};
 
 /* ======================================================
-   VERIFY PAYMENT
+   VERIFY PAYMENT (MANUAL BACKUP)
 ====================================================== */
-
 exports.verifyPayment = catchAsync(async (req, res, next) => {
   const { reference } = req.query;
 
@@ -274,7 +223,7 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
       headers: {
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
-    },
+    }
   );
 
   const data = await response.json();
@@ -290,26 +239,23 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
 });
 
 /* ======================================================
-   UPDATE ORDER STATUS
+   UPDATE ORDER STATUS (ADMIN)
 ====================================================== */
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  const order = await Order.findById(id);
+  const order = await Order.findById(req.params.id);
 
   if (!order) {
     return next(new AppError("Order not found", 404));
   }
 
-  order.orderStatus = status;
+  order.orderStatus = req.body.orderStatus;
 
-  if (status === "delivered") {
+  if (req.body.orderStatus === "delivered") {
     order.isDelivered = true;
     order.deliveredAt = Date.now();
   }
 
-  if (status === "cancelled") {
+  if (req.body.orderStatus === "cancelled") {
     order.isDelivered = false;
   }
 
@@ -325,9 +271,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
    DELETE ORDER
 ====================================================== */
 exports.deleteOrder = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-
-  const order = await Order.findByIdAndDelete(id);
+  const order = await Order.findByIdAndDelete(req.params.id);
 
   if (!order) {
     return next(new AppError("Order not found", 404));
@@ -343,9 +287,7 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
    GET MY ORDERS
 ====================================================== */
 exports.getMyOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.find({
-    user: req.user._id,
-  })
+  const orders = await Order.find({ user: req.user._id })
     .populate("orderItems.product")
     .sort("-createdAt");
 
