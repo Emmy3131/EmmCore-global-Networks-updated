@@ -61,7 +61,8 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
     amount: totalPrice * 100,
     callback_url: `${process.env.FRONTEND_URL}/payment-success`,
     metadata: {
-      userId: userId.toString(),
+      userId: userId,
+      orderItems: JSON.stringify(orderItems),
       shippingAddress: req.body.shippingAddress,
       totalPrice,
     },
