@@ -136,7 +136,7 @@ exports.handlePayStackWebhook = async (req, res) => {
        SUCCESS PAYMENT
     ====================================================== */
     if (event.event === "charge.success") {
-      const metadata = JSON.parse(event.data.metadata);
+      const metadata = event.data.metadata;
       const userId = metadata.userId
 
       const order = await Order.findOne({
