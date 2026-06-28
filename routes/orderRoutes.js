@@ -20,7 +20,8 @@ router.get(
 
 /* ================= PAYSTACK WEBHOOK ================= */
 /* NO AUTH HERE */
-router.post("/paystack-webhook", orderController.handlePayStackWebhook);
+
+router.post("/webhook", orderController.handlePayStackWebhook);
 
 /* ================= ORDERS ================= */
 router.route("/").get(authController.protect, orderController.getAllOrders);
@@ -33,10 +34,10 @@ router
   .delete(authController.protect, orderController.deleteOrder)
   .patch(authController.protect, orderController.updateOrderStatus);
 
-router.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  orderController.handlePayStackWebhook,
-);
+// router.post(
+//   "/webhook",
+//   express.raw({ type: "application/json" }),
+//   orderController.handlePayStackWebhook,
+// );
 
 module.exports = router;

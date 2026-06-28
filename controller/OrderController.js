@@ -136,10 +136,11 @@ exports.handlePayStackWebhook = async (req, res) => {
        SUCCESS PAYMENT
     ====================================================== */
     if (event.event === "charge.success") {
-      const reference = event.data.reference;
+      const metadata = JSON.parse(event.data.metadata);
+      const userId = metadata.userId
 
       const order = await Order.findOne({
-        "paymentResult.reference": reference,
+        user: userId
       });
 
       if (!order) return res.sendStatus(200);

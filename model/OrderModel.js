@@ -83,7 +83,7 @@ const orderSchema = new mongoose.Schema(
     // 📦 Order Status
     paymentStatus: {
       type: String,
-      enum: [ "pending", "paid", "failed", "refunded"],
+      enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
 
@@ -94,11 +94,10 @@ const orderSchema = new mongoose.Schema(
     },
 
     isPaid: {
-  type: Boolean,
-  default: false,
-},
+      type: Boolean,
+      default: false,
+    },
     paidAt: Date,
-
 
     isDelivered: {
       type: Boolean,
