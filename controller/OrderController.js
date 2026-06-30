@@ -347,16 +347,14 @@ Thank you for shopping with us.
   /* ================= SEND EMAIL ================= */
 
   try {
-    await Email({
-      email: order.user.email,
-      subject,
-      message,
-    });
+  const email = new Email(order.user);
 
-    console.log("Order status email sent.");
-  } catch (err) {
-    console.error("Email sending failed:", err.message);
-  }
+  await email.send(subject, message);
+
+  console.log("Order status email sent.");
+} catch (err) {
+  console.error("Email sending failed:", err);
+}
 
   res.status(200).json({
     status: "success",
