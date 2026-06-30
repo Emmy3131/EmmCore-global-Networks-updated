@@ -347,7 +347,7 @@ Thank you for shopping with us.
   /* ================= SEND EMAIL ================= */
 
   try {
-    await sendEmail({
+    await Email({
       email: order.user.email,
       subject,
       message,
