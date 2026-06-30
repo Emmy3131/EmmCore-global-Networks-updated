@@ -141,20 +141,32 @@ exports.handlePayStackWebhook = async (req, res) => {
        SUCCESS PAYMENT
     ====================================================== */
     if (event.event === "charge.success") {
-     const reference = event.data.reference;
+      const reference = event.data.reference;
 
       const order = await Order.findOne({
         "paymentResult.reference": reference,
       });
 
-      if (!order) return res.sendStatus(200);
+      if (!order) {
+        console.log("Order not found for reference:", reference);
+        return res.sendStatus(200);
+      }
 
-      // prevent duplicate processing
+      // prevent double processing
       if (order.paymentStatus === "paid") {
         return res.sendStatus(200);
       }
 
-      /* ================= UPDATE STOCK ================= */
+      // ================= UPDATE ORDER FIRST =================
+      order.paymentStatus = "paid";
+      order.orderStatus = "processing";
+      order.isPaid = true;
+      order.paidAt = Date.now();
+      order.paymentResult.status = event.data.status;
+
+      await order.save();
+
+      // ================= UPDATE STOCK =================
       for (const item of order.orderItems) {
         const product = await Product.findById(item.product);
 
@@ -166,23 +178,10 @@ exports.handlePayStackWebhook = async (req, res) => {
         }
       }
 
-      /* ================= UPDATE ORDER ================= */
-      order.paymentStatus = "paid";
-      order.orderStatus = "processing";
-      order.isPaid = true;
-      order.paidAt = Date.now();
-
-      order.paymentResult = {
-        id: event.data.id,
-        reference: reference,
-        status: event.data.status,
-        email_address: event.data.customer.email,
-      };
-
-      await order.save();
-
-      /* ================= CLEAR CART ================= */
+      // ================= CLEAR CART =================
       await Cart.findOneAndDelete({ user: order.user });
+
+      console.log("ORDER UPDATED SUCCESSFULLY:", order._id);
 
       return res.sendStatus(200);
     }

@@ -6,15 +6,12 @@ const orderItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-
   name: String,
   image: String,
-
   quantity: {
     type: Number,
     required: true,
   },
-
   price: {
     type: Number,
     required: true,
@@ -23,17 +20,15 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
-    // 👤 User who made order
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
-    // 🛒 Ordered products
     orderItems: [orderItemSchema],
 
-    // 🚚 Shipping Address
     shippingAddress: {
       fullName: String,
       address: String,
@@ -42,20 +37,25 @@ const orderSchema = new mongoose.Schema(
       phone: String,
     },
 
-    // 💳 Payment
     paymentMethod: {
       type: String,
       enum: ["paystack", "cash_on_delivery", "bank_transfer"],
       required: true,
     },
 
+    // ✅ FIXED PAYMENT RESULT
     paymentResult: {
       id: String,
+      reference: {
+        type: String,
+        index: true,   // 🔥 VERY IMPORTANT
+      },
       status: String,
       email_address: String,
+      channel: String,
+      amount: Number,
     },
 
-    // 💰 Prices
     itemsPrice: {
       type: Number,
       required: true,
@@ -80,7 +80,6 @@ const orderSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // 📦 Order Status
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed", "refunded"],
@@ -97,6 +96,7 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     paidAt: Date,
 
     isDelivered: {
