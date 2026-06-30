@@ -123,23 +123,21 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
 ====================================================== */
 exports.handlePayStackWebhook = async (req, res) => {
   try {
-    /* ================= VERIFY SIGNATURE ================= */
     const signature = req.headers["x-paystack-signature"];
+
+    const rawBody = req.body; // MUST be Buffer (from express.raw)
 
     const hash = crypto
       .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
-      .update(req.body)
+      .update(rawBody)
       .digest("hex");
 
     if (hash !== signature) {
       return res.sendStatus(401);
     }
 
-    const event = JSON.parse(req.body.toString());
+    const event = JSON.parse(rawBody.toString());
 
-    /* ======================================================
-       SUCCESS PAYMENT
-    ====================================================== */
     if (event.event === "charge.success") {
       const reference = event.data.reference;
 
@@ -148,7 +146,7 @@ exports.handlePayStackWebhook = async (req, res) => {
       });
 
       if (!order) {
-        console.log("Order not found for reference:", reference);
+        console.log("Order not found:", reference);
         return res.sendStatus(200);
       }
 
@@ -157,49 +155,39 @@ exports.handlePayStackWebhook = async (req, res) => {
         return res.sendStatus(200);
       }
 
-      // ================= UPDATE ORDER FIRST =================
+      // update order FIRST
       order.paymentStatus = "paid";
       order.orderStatus = "processing";
       order.isPaid = true;
       order.paidAt = Date.now();
-      order.paymentResult.status = event.data.status;
 
       await order.save();
 
-      // ================= UPDATE STOCK =================
+      // update stock
       for (const item of order.orderItems) {
         const product = await Product.findById(item.product);
 
-        if (!product) continue;
-
-        if (product.stock >= item.quantity) {
+        if (product && product.stock >= item.quantity) {
           product.stock -= item.quantity;
           await product.save();
         }
       }
 
-      // ================= CLEAR CART =================
-      await Cart.findOneAndDelete({ user: order.user });
+      // FIXED CART CLEARING (IMPORTANT)
+      await Cart.deleteMany({ user: order.user });
 
-      console.log("ORDER UPDATED SUCCESSFULLY:", order._id);
+      console.log("CART CLEARED FOR USER:", order.user);
 
       return res.sendStatus(200);
     }
 
-    /* ======================================================
-       FAILED PAYMENT
-    ====================================================== */
     if (event.event === "charge.failed") {
       const reference = event.data.reference;
 
-      const order = await Order.findOne({
-        "paymentResult.reference": reference,
-      });
-
-      if (order) {
-        order.paymentStatus = "failed";
-        await order.save();
-      }
+      await Order.findOneAndUpdate(
+        { "paymentResult.reference": reference },
+        { paymentStatus: "failed" },
+      );
 
       return res.sendStatus(200);
     }

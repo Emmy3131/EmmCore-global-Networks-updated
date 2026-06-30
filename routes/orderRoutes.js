@@ -4,6 +4,12 @@ const router = express.Router();
 const orderController = require("../controller/OrderController");
 const authController = require("../controller/authController");
 
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  orderController.handlePayStackWebhook,
+);
+
 /* ================= CHECKOUT ================= */
 router.post(
   "/checkout",
@@ -33,11 +39,5 @@ router
   .get(authController.protect, orderController.getOrder)
   .delete(authController.protect, orderController.deleteOrder)
   .patch(authController.protect, orderController.updateOrderStatus);
-
-router.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  orderController.handlePayStackWebhook,
-);
 
 module.exports = router;
