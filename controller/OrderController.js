@@ -77,13 +77,15 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
       body: JSON.stringify(payload),
-    }
+    },
   );
 
   const data = await response.json();
 
   if (!response.ok) {
-    return next(new AppError(data.message || "Payment initialization failed", 500));
+    return next(
+      new AppError(data.message || "Payment initialization failed", 500),
+    );
   }
 
   /* ======================================================
@@ -122,26 +124,27 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
 exports.handlePayStackWebhook = async (req, res) => {
   try {
     /* ================= VERIFY SIGNATURE ================= */
+    const signature = req.headers["x-paystack-signature"];
+
     const hash = crypto
       .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
-      .update(JSON.stringify(req.body))
+      .update(req.body)
       .digest("hex");
 
-    if (hash !== req.headers["x-paystack-signature"]) {
+    if (hash !== signature) {
       return res.sendStatus(401);
     }
 
-    const event = req.body;
+    const event = JSON.parse(req.body.toString());
 
     /* ======================================================
        SUCCESS PAYMENT
     ====================================================== */
     if (event.event === "charge.success") {
-      const metadata = event.data.metadata;
-      const userId = metadata.userId
+     const reference = event.data.reference;
 
       const order = await Order.findOne({
-        user: userId
+        "paymentResult.reference": reference,
       });
 
       if (!order) return res.sendStatus(200);
@@ -171,7 +174,7 @@ exports.handlePayStackWebhook = async (req, res) => {
 
       order.paymentResult = {
         id: event.data.id,
-        reference,
+        reference: reference,
         status: event.data.status,
         email_address: event.data.customer.email,
       };
@@ -225,7 +228,7 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
       headers: {
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
-    }
+    },
   );
 
   const data = await response.json();
