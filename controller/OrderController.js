@@ -5,6 +5,7 @@ const Order = require("../model/OrderModel");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const prepareOrderData = require("../utils/prepareOrderData");
+const Email = require("../utils/email");
 
 const crypto = require("crypto");
 
@@ -234,7 +235,10 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
    UPDATE ORDER STATUS (ADMIN)
 ====================================================== */
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id).populate(
+    "user",
+    "firstName lastName email",
+  );
 
   if (!order) {
     return next(new AppError("Order not found", 404));
@@ -252,6 +256,107 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   }
 
   await order.save();
+
+  /* ================= EMAIL MESSAGE ================= */
+
+  let subject = "";
+  let message = "";
+
+  switch (order.orderStatus) {
+    case "processing":
+      subject = "Your Order is Being Processed";
+      message = `
+Hello ${order.user.firstName},
+
+Great news! 🎉
+
+We've started preparing your order.
+
+Order ID: ${order._id}
+
+Current Status: Processing
+
+We'll notify you again once your order has been shipped.
+
+Thank you for shopping with us.
+`;
+      break;
+
+    case "shipped":
+      subject = "Your Order Has Been Shipped";
+      message = `
+Hello ${order.user.firstName},
+
+Your order has been shipped and is on its way.
+
+Order ID: ${order._id}
+
+Current Status: Shipped
+
+Please keep an eye on your phone and email for delivery updates.
+
+Thank you for shopping with us.
+`;
+      break;
+
+    case "delivered":
+      subject = "Order Delivered";
+      message = `
+Hello ${order.user.firstName},
+
+Your order has been delivered successfully.
+
+Order ID: ${order._id}
+
+We hope you enjoy your purchase.
+
+Thank you for choosing our store. ❤️
+`;
+      break;
+
+    case "cancelled":
+      subject = "Order Cancelled";
+      message = `
+Hello ${order.user.firstName},
+
+Your order has been cancelled.
+
+Order ID: ${order._id}
+
+If you did not request this cancellation, please contact our support team.
+
+Thank you.
+`;
+      break;
+
+    default:
+      subject = "Order Updated";
+      message = `
+Hello ${order.user.firstName},
+
+Your order status has been updated.
+
+Current Status: ${order.orderStatus}
+
+Order ID: ${order._id}
+
+Thank you for shopping with us.
+`;
+  }
+
+  /* ================= SEND EMAIL ================= */
+
+  try {
+    await sendEmail({
+      email: order.user.email,
+      subject,
+      message,
+    });
+
+    console.log("Order status email sent.");
+  } catch (err) {
+    console.error("Email sending failed:", err.message);
+  }
 
   res.status(200).json({
     status: "success",
