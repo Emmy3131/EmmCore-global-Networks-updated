@@ -62,7 +62,7 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
     callback_url: `${process.env.FRONTEND_URL}/payment-success`,
     metadata: {
       userId: userId,
-      orderItems: JSON.stringify(orderItems),
+      orderItems: orderItems,
       shippingAddress: req.body.shippingAddress,
       totalPrice,
     },
