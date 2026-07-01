@@ -1,6 +1,7 @@
 const User = require("../model/UserModel");
 const Product = require("../model/ProductModel");
 const Order = require("../model/OrderModel");
+const catchAsync = require("../utils/catchAsync");
 
 /*
 |--------------------------------------------------------------------------
@@ -9,16 +10,14 @@ const Order = require("../model/OrderModel");
 */
 exports.getStats = async (req, res) => {
   try {
-    // counts
     const totalUsers = await User.countDocuments();
     const totalProducts = await Product.countDocuments();
     const totalOrders = await Order.countDocuments();
 
-    // revenue calculation (FIXED FIELD PATH)
     const revenue = await Order.aggregate([
       {
         $match: {
-          "paymentResult.status": "success", // ✅ FIXED
+          paymentStatus: "paid", // FIXED
         },
       },
       {
@@ -29,10 +28,10 @@ exports.getStats = async (req, res) => {
       },
     ]);
 
-    const totalRevenue = revenue?.[0]?.totalRevenue || 0;
+    const totalRevenue = revenue.length > 0 ? revenue[0].totalRevenue : 0;
 
     res.status(200).json({
-      success: true,
+      status: "success",
       stats: {
         totalUsers,
         totalProducts,
@@ -44,8 +43,46 @@ exports.getStats = async (req, res) => {
     console.error("STATS ERROR:", error);
 
     res.status(500).json({
-      success: false,
+      status: "error",
       message: error.message,
     });
   }
 };
+
+exports.getSalesOverview = catchAsync(async (req, res) => {
+  const sales = await Order.aggregate([
+    {
+      $match: {
+        paymentStatus: "paid",
+      },
+    },
+
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$createdAt",
+            timezone: "Africa/Lagos", // ✅ FIXED (important for Nigeria)
+          },
+        },
+        totalSales: { $sum: "$totalPrice" },
+        totalOrders: { $sum: 1 },
+      },
+    },
+
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
+
+  res.status(200).json({
+    status: "success",
+    results: sales.length,
+    data: sales.map((item) => ({
+      date: item._id,          // ✅ cleaner for frontend
+      totalSales: item.totalSales,
+      totalOrders: item.totalOrders,
+    })),
+  });
+});
