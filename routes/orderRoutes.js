@@ -6,7 +6,7 @@ const authController = require("../controller/authController");
 
 router.post(
   "/webhook",
-  express.raw({ type: "application/json" }), authController.protect, orderController.handlePayStackWebhook,
+  express.raw({ type: "application/json" }), orderController.handlePayStackWebhook,
 );
 
 /* ================= CHECKOUT ================= */
