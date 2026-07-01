@@ -24,9 +24,8 @@ router.get(
 );
 
 /* ================= PAYSTACK WEBHOOK ================= */
-/* NO AUTH HERE */
 
-// router.post("/webhook", orderController.handlePayStackWebhook);
+/* NO AUTH HERE */
 
 /* ================= ORDERS ================= */
 router.route("/").get(authController.protect, orderController.getAllOrders);

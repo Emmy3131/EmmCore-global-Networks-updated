@@ -82,9 +82,9 @@ productSchema.virtual("totalPrice").get(function () {
   return this.price * this.stock; //
 });
 
-productSchema.pre("save", function (next) {
+productSchema.pre("save", function () {
   this.slug = slugify(this.name, { lower: true });
-  next();
+ 
 });
 
 module.exports = mongoose.model("Product", productSchema);
