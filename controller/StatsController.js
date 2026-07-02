@@ -1,7 +1,6 @@
 const User = require("../model/UserModel");
 const Product = require("../model/ProductModel");
 const Order = require("../model/OrderModel");
-const catchAsync = require("../utils/catchAsync");
 
 /*
 |--------------------------------------------------------------------------
@@ -10,25 +9,60 @@ const catchAsync = require("../utils/catchAsync");
 */
 exports.getStats = async (req, res) => {
   try {
+    // ================= COUNTS =================
     const totalUsers = await User.countDocuments();
     const totalProducts = await Product.countDocuments();
     const totalOrders = await Order.countDocuments();
 
+    // ================= ORDER STATUS =================
+    const pendingOrders = await Order.countDocuments({
+      orderStatus: "pending",
+    });
+
+    const processingOrders = await Order.countDocuments({
+      orderStatus: "processing",
+    });
+
+    const shippedOrders = await Order.countDocuments({
+      orderStatus: "shipped",
+    });
+
+    const deliveredOrders = await Order.countDocuments({
+      orderStatus: "delivered",
+    });
+
+    const cancelledOrders = await Order.countDocuments({
+      orderStatus: "cancelled",
+    });
+
+    // ================= PAYMENT STATUS =================
+    const paidOrders = await Order.countDocuments({
+      paymentStatus: "paid",
+    });
+
+    const failedPayments = await Order.countDocuments({
+      paymentStatus: "failed",
+    });
+
+    // ================= REVENUE =================
     const revenue = await Order.aggregate([
       {
         $match: {
-          paymentStatus: "paid", // FIXED
+          paymentStatus: "paid",
         },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$totalPrice" },
+          totalRevenue: {
+            $sum: "$totalPrice",
+          },
         },
       },
     ]);
 
-    const totalRevenue = revenue.length > 0 ? revenue[0].totalRevenue : 0;
+    const totalRevenue =
+      revenue.length > 0 ? revenue[0].totalRevenue : 0;
 
     res.status(200).json({
       status: "success",
@@ -36,6 +70,16 @@ exports.getStats = async (req, res) => {
         totalUsers,
         totalProducts,
         totalOrders,
+
+        pendingOrders,
+        processingOrders,
+        shippedOrders,
+        deliveredOrders,
+        cancelledOrders,
+
+        paidOrders,
+        failedPayments,
+
         totalRevenue,
       },
     });
