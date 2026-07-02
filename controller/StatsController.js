@@ -1,6 +1,7 @@
 const User = require("../model/UserModel");
 const Product = require("../model/ProductModel");
 const Order = require("../model/OrderModel");
+const catchAsync = require("../utils/catchAsync");
 
 /*
 |--------------------------------------------------------------------------
