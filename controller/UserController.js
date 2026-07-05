@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt");
 const User = require("../model/UserModel");
+const Order = require("../model/OrderModel")
 
 // ✅ GET ALL USERS
 exports.getUsers = async (req, res) => {
@@ -160,6 +161,32 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({
       status: "error",
       message: error.message
+    });
+  }
+};
+
+const Order = require("../model/OrderModel");
+
+// Get all orders for a particular user
+exports.getAllOrderByAUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const orders = await Order.find({ user: id })
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: "success",
+      results: orders.length,
+      data: orders,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      status: "error",
+      message: error.message,
     });
   }
 };

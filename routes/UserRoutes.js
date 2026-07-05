@@ -9,6 +9,7 @@ router.post('/logout', authController.logout)
 router.post('/forgotPassword', authController.forgotPassword)
 router.patch('/resetPassword/:token', authController.resetPassword)
 router.get('/me', authController.protect, authController.getMe);
+
 //router.post('/login', userController.login)
 
 // CREATE + GET
@@ -23,5 +24,9 @@ router
   .patch(userController.updateUser)
   .get(userController.getUser)
   .delete(userController.deleteUser)
+  
+router
+  .route('/user/:id/orders')
+  .get(authController.protect, userController.getAllOrderByAUser)
 
 module.exports = router
