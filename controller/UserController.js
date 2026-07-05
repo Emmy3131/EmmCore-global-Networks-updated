@@ -199,19 +199,33 @@ exports.toggleUserStatus = async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
     }
 
-    user.status = user.status === "active" ? "inactive" : "active";
-    await user.save();
+    const newStatus = user.status === "active" ? "inactive" : "active";
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { status: newStatus },
+      {
+        new: true,
+        runValidators: false, // IMPORTANT FIX
+      }
+    );
 
     res.status(200).json({
       status: "success",
-      data: user,
+      data: updatedUser,
     });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
   }
 };
 
