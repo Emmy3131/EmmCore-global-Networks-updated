@@ -26,7 +26,7 @@ router
   .delete(userController.deleteUser)
   
 router
-  .route('/user/:id/orders')
+  .route('/:id/orders')
   .get(authController.protect, userController.getAllOrderByAUser)
 
 module.exports = router
