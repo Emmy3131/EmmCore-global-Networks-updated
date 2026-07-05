@@ -165,7 +165,6 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-const Order = require("../model/OrderModel");
 
 // Get all orders for a particular user
 exports.getAllOrderByAUser = async (req, res) => {
