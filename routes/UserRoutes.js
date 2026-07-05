@@ -20,7 +20,7 @@ router
 
 // UPDATE + DELETE
 router
-  .route('/user/:id')
+  .route('/:id')
   .patch(userController.updateUser)
   .get(userController.getUser)
   .delete(userController.deleteUser)
