@@ -9,6 +9,7 @@ router.post('/logout', authController.logout)
 router.post('/forgotPassword', authController.forgotPassword)
 router.patch('/resetPassword/:token', authController.resetPassword)
 router.get('/me', authController.protect, authController.getMe);
+router.patch("/:id/toggle-status", userController.toggleUserStatus);
 
 //router.post('/login', userController.login)
 
@@ -28,5 +29,7 @@ router
 router
   .route('/:id/orders')
   .get(authController.protect, userController.getAllOrderByAUser)
+
+
 
 module.exports = router
