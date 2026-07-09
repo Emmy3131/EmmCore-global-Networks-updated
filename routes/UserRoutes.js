@@ -10,6 +10,7 @@ router.post("/forgotPassword", authController.forgotPassword);
 router.patch("/resetPassword/:token", authController.resetPassword);
 router.get("/me", authController.protect, authController.getMe);
 router.patch("/:id/toggle-status", userController.toggleUserStatus);
+router.patch("/updateMe", userController.updateMe);
 
 //router.post('/login', userController.login)
 
@@ -27,6 +28,6 @@ router
   .route("/:id/orders")
   .get(authController.protect, userController.getAllOrderByAUser);
 
-router.patch("/updateMe", authController.protect, userController.updateMe);
+
 
 module.exports = router;
