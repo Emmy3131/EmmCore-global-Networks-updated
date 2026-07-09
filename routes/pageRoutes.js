@@ -10,7 +10,7 @@ router
   .post(
     authController.protect,
     authController.restrictTo("admin"),
-    PageController.createPage
+    PageController.createPage,
   )
   .get(PageController.getPages);
 
@@ -27,12 +27,19 @@ router
   .patch(
     authController.protect,
     authController.restrictTo("admin"),
-    PageController.updatePage
+    PageController.updatePage,
   )
   .delete(
     authController.protect,
     authController.restrictTo("admin"),
-    PageController.deletePage
+    PageController.deletePage,
   );
+
+router.get(
+  "/preview/:id",
+  authController.protect,
+  authController.restrictTo("admin"),
+  PageController.previewPage,
+);
 
 module.exports = router;

@@ -121,3 +121,17 @@ exports.deletePage = catchAsync(async (req, res, next) => {
     message: "Page deleted successfully",
   });
 });
+
+exports.previewPage = catchAsync(async (req, res, next) => {
+  const page = await PageModel.findById(req.params.id);
+
+  if (!page) {
+    return next(new AppError("Page not found", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+
+    data: page,
+  });
+});
