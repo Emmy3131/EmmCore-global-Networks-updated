@@ -273,3 +273,91 @@ exports.toggleUserStatus = async (req, res) => {
     });
   }
 };
+
+
+exports.updatePassword = async (req, res, next) => {
+  try {
+
+    const {
+      currentPassword,
+      newPassword,
+    } = req.body;
+
+
+    // 1. Check if passwords were provided
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        status: "fail",
+        message:
+          "Please provide current password and new password",
+      });
+    }
+
+
+    // 2. Get current user with password
+    const user = await User.findById(req.user.id)
+      .select("+password");
+
+
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+
+
+    // 3. Check current password
+    const isCorrectPassword =
+      await user.correctPassword(
+        currentPassword,
+        user.password
+      );
+
+
+    if (!isCorrectPassword) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Current password is incorrect",
+      });
+    }
+
+
+
+    // 4. Update password
+    user.password = newPassword;
+    user.passwordConfirm = newPassword;
+
+
+    // 5. Save (runs bcrypt hashing middleware)
+    await user.save();
+
+
+
+    res.status(200).json({
+
+      status: "success",
+
+      message:
+        "Password updated successfully",
+
+    });
+
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+
+      status:"error",
+
+      message:error.message,
+
+    });
+
+  }
+
+};
