@@ -123,7 +123,9 @@ exports.deletePage = catchAsync(async (req, res, next) => {
 });
 
 exports.previewPage = catchAsync(async (req, res, next) => {
-  const page = await PageModel.findById(req.params.id);
+  const page = await PageModel.findOne({
+    slug: req.params.slug,
+  });
 
   if (!page) {
     return next(new AppError("Page not found", 404));
