@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const User = require("../model/UserModel");
-const Order = require("../model/OrderModel")
+const Order = require("../model/OrderModel");
 
 // ✅ GET ALL USERS
 exports.getUsers = async (req, res) => {
@@ -10,13 +10,12 @@ exports.getUsers = async (req, res) => {
     res.status(200).json({
       status: "success",
       results: users.length,
-      data: users
+      data: users,
     });
-
   } catch (error) {
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -31,19 +30,18 @@ exports.getUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         status: "error",
-        message: "User not found"
+        message: "User not found",
       });
     }
 
     res.status(200).json({
       status: "success",
-      data: user
+      data: user,
     });
-
   } catch (error) {
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -51,17 +49,26 @@ exports.getUser = async (req, res) => {
 // ✅ CREATE USER
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, phone, country, address } = req.body;
+    const { name, email, password, confirmPassword, phone, country, address } =
+      req.body;
 
-    if (!name || !email || !password || !confirmPassword || !phone || !country || !address) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !confirmPassword ||
+      !phone ||
+      !country ||
+      !address
+    ) {
       return res.status(400).json({
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
     if (password !== confirmPassword) {
       return res.status(400).json({
-        message: "Passwords do not match"
+        message: "Passwords do not match",
       });
     }
 
@@ -69,7 +76,7 @@ exports.createUser = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
-        message: "Email already exists"
+        message: "Email already exists",
       });
     }
 
@@ -82,7 +89,7 @@ exports.createUser = async (req, res) => {
       password: hashedPassword,
       phone,
       country,
-      address
+      address,
     });
 
     res.status(201).json({
@@ -94,14 +101,13 @@ exports.createUser = async (req, res) => {
         email: newUser.email,
         phone: newUser.phone,
         country: newUser.country,
-        address: newUser.address
-      }
+        address: newUser.address,
+      },
     });
-
   } catch (error) {
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -111,32 +117,75 @@ exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    ).select("-password");
+    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
 
     if (!updatedUser) {
       return res.status(404).json({
         status: "error",
-        message: "User not found"
+        message: "User not found",
       });
     }
 
     res.status(200).json({
       status: "success",
       message: "User updated successfully",
-      data: updatedUser
+      data: updatedUser,
     });
-
   } catch (error) {
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
+
+/* ===========================================
+   UPDATE LOGGED IN USER
+=========================================== */
+
+exports.updateMe = catchAsync(async (req, res, next) => {
+  // Do not allow password updates here
+  if (req.body.password || req.body.passwordConfirm) {
+    return next(
+      new AppError(
+        "This route is not for password updates. Please use /updatePassword.",
+        400,
+      ),
+    );
+  }
+
+  // Fields that users are allowed to update
+  const allowedFields = [
+    "firstName",
+    "lastName",
+    "phone",
+    "address",
+    "country",
+    "dateOfBirth",
+    "gender",
+  ];
+
+  const filteredBody = {};
+
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      filteredBody[field] = req.body[field];
+    }
+  });
+
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: updatedUser,
+  });
+});
 
 // ✅ DELETE USER
 exports.deleteUser = async (req, res) => {
@@ -148,23 +197,21 @@ exports.deleteUser = async (req, res) => {
     if (!deletedUser) {
       return res.status(404).json({
         status: "error",
-        message: "User not found"
+        message: "User not found",
       });
     }
 
     res.status(200).json({
       status: "success",
-      message: "User deleted successfully"
+      message: "User deleted successfully",
     });
-
   } catch (error) {
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
-
 
 // Get all orders for a particular user
 exports.getAllOrderByAUser = async (req, res) => {
@@ -190,7 +237,6 @@ exports.getAllOrderByAUser = async (req, res) => {
   }
 };
 
-
 /* ===============================
    ACTIVATE / DEACTIVATE USER
 ================================ */
@@ -213,14 +259,13 @@ exports.toggleUserStatus = async (req, res) => {
       {
         new: true,
         runValidators: false, // IMPORTANT FIX
-      }
+      },
     );
 
     res.status(200).json({
       status: "success",
       data: updatedUser,
     });
-
   } catch (err) {
     res.status(500).json({
       status: "error",
@@ -228,4 +273,3 @@ exports.toggleUserStatus = async (req, res) => {
     });
   }
 };
-
