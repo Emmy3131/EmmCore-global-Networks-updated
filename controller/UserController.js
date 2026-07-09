@@ -146,7 +146,7 @@ exports.updateUser = async (req, res) => {
    UPDATE LOGGED IN USER
 =========================================== */
 
-exports.updateMe = catchAsync(async (req, res, next) => {
+exports.updateMe = async (req, res, next) => {
   // Do not allow password updates here
   if (req.body.password || req.body.passwordConfirm) {
     return next(
@@ -185,7 +185,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     status: "success",
     data: updatedUser,
   });
-});
+};
 
 // ✅ DELETE USER
 exports.deleteUser = async (req, res) => {
