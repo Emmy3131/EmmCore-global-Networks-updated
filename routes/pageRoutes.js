@@ -36,7 +36,7 @@ router
   );
 
 router.get(
-  "/preview/:id",
+  "/preview/:slug",
   authController.protect,
   authController.restrictTo("admin"),
   PageController.previewPage,
