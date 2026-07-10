@@ -1,10 +1,16 @@
 const Product = require("../model/ProductModel");
-const ApiFeatures = require("../utils/ApiFeatures");
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/appError");
-const Category = require("../model/Category");
 
-// ✅ GET ALL PRODUCTS
+const ApiFeatures = require("../utils/ApiFeatures");
+
+const catchAsync = require("../utils/catchAsync");
+
+const AppError = require("../utils/appError");
+
+/*
+=====================================================
+GET ALL PRODUCTS
+=====================================================
+*/
 
 exports.getProducts = catchAsync(async (req, res, next) => {
   const features = new ApiFeatures(
@@ -20,12 +26,19 @@ exports.getProducts = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
+
     results: products.length,
+
     data: products,
   });
 });
 
-// ✅ GET SINGLE PRODUCT
+/*
+=====================================================
+GET SINGLE PRODUCT
+=====================================================
+*/
+
 exports.getProduct = catchAsync(async (req, res, next) => {
   const product = await Product.findById(req.params.id).populate("category");
 
@@ -35,75 +48,124 @@ exports.getProduct = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
+
     data: product,
   });
 });
 
-// ✅ CREATE PRODUCT
-exports.createProduct = catchAsync(async (req, res, next) => {
-  const { image, name, description, price, category, stock } = req.body;
+/*
+=====================================================
+CREATE PRODUCT
+=====================================================
+*/
 
-  const newProduct = new Product({
-    image,
-    name,
-    description,
-    price,
-    category,
-    stock,
+exports.createProduct = catchAsync(async (req, res, next) => {
+  const product = await Product.create({
+    image: req.body.image,
+
+    name: req.body.name,
+
+    description: req.body.description,
+
+    price: req.body.price,
+
+    category: req.body.category,
+
+    stock: req.body.stock,
+
+    isTrending: req.body.isTrending || false,
+
+    isFlashSale: req.body.isFlashSale || false,
+
+    flashSalePrice: req.body.flashSalePrice,
+
+    flashSaleEndAt: req.body.flashSaleEndAt,
+
+    oldPrice: req.body.oldPrice,
   });
 
-  const savedProduct = await newProduct.save();
   res.status(201).json({
     status: "success",
-    data: savedProduct,
+
+    data: product,
   });
 });
 
-// ✅ UPDATE PRODUCT
+/*
+=====================================================
+UPDATE PRODUCT
+=====================================================
+*/
+
 exports.updateProduct = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-  const updates = req.body;
-  const updatedProduct = await Product.findByIdAndUpdate(id, updates, {
-    new: true,
-    runValidators: true,
-  });
+  const product = await Product.findByIdAndUpdate(
+    req.params.id,
 
-  if (!updatedProduct) {
+    req.body,
+
+    {
+      new: true,
+
+      runValidators: true,
+    },
+  ).populate("category");
+
+  if (!product) {
     return next(new AppError("Product not found", 404));
   }
+
   res.status(200).json({
     status: "success",
-    data: updatedProduct,
+
+    data: product,
   });
 });
 
-// ✅ DELETE PRODUCT
-exports.deleteProduct = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
+/*
+=====================================================
+DELETE PRODUCT
+=====================================================
+*/
 
-  const deletedProduct = await Product.findByIdAndDelete(id);
-  if (!deletedProduct) {
+exports.deleteProduct = catchAsync(async (req, res, next) => {
+  const product = await Product.findByIdAndDelete(req.params.id);
+
+  if (!product) {
     return next(new AppError("Product not found", 404));
   }
+
   res.status(200).json({
     status: "success",
+
     message: "Product deleted successfully",
   });
 });
 
-// ✅ GET PRODUCTS BY CATEGORY
-exports.getProductsByCategory = catchAsync(async (req, res) => {
-  const { id } = req.params;
+/*
+=====================================================
+PRODUCT BY CATEGORY
+=====================================================
+*/
 
+exports.getProductsByCategory = catchAsync(async (req, res) => {
   const products = await Product.find({
-    category: id,
+    category: req.params.id,
   }).populate("category");
 
   res.status(200).json({
     status: "success",
+
+    results: products.length,
+
     data: products,
   });
 });
+
+/*
+=====================================================
+TRENDING PRODUCTS
+=====================================================
+*/
 
 exports.getTrendingProducts = catchAsync(async (req, res) => {
   const products = await Product.find({
@@ -112,69 +174,214 @@ exports.getTrendingProducts = catchAsync(async (req, res) => {
 
   res.status(200).json({
     status: "success",
+
     results: products.length,
+
     data: products,
   });
 });
 
+/*
+=====================================================
+FLASH SALE PRODUCTS
+=====================================================
+*/
+
 exports.getFlashSaleProducts = catchAsync(async (req, res) => {
-  const now = new Date();
   const products = await Product.find({
     isFlashSale: true,
-    // flashSaleEndAt: { $gt: now },
   }).populate("category");
 
   res.status(200).json({
     status: "success",
+
     results: products.length,
+
     data: products,
   });
 });
 
+/*
+=====================================================
+NEW ARRIVALS
+=====================================================
+*/
+
 exports.getNewArrivals = catchAsync(async (req, res) => {
   const products = await Product.find()
-    .sort({ createdAt: -1 })
+
+    .sort({
+      createdAt: -1,
+    })
+
     .limit(8)
+
     .populate("category");
 
-    res.status(200).json({
-      status: "success",
-      results: products.length,
-      data: products,
-    });
+  res.status(200).json({
+    status: "success",
+
+    results: products.length,
+
+    data: products,
+  });
 });
 
+/*
+=====================================================
+SEARCH PRODUCTS
+=====================================================
+*/
 
 exports.searchProducts = catchAsync(async (req, res) => {
-  const keyword = req.query.keyword;
+  const keyword = req.query.keyword || "";
 
   const products = await Product.find({
     name: {
       $regex: keyword,
       $options: "i",
     },
-  });
+  }).populate("category");
 
   res.status(200).json({
     status: "success",
+
+    results: products.length,
+
     data: products,
   });
 });
 
-exports.getRelatedProducts = catchAsync(
-  async (req, res) => {
-    const product = await Product.findById(
-      req.params.id
-    );
+/*
+=====================================================
+RELATED PRODUCTS
+=====================================================
+*/
 
-    const related = await Product.find({
-      category: product.category,
-      _id: { $ne: product._id },
-    }).limit(8);
+exports.getRelatedProducts = catchAsync(async (req, res, next) => {
+  const product = await Product.findById(req.params.id);
 
-    res.status(200).json({
-      status: "success",
-      data: related,
-    });
+  if (!product) {
+    return next(new AppError("Product not found", 404));
   }
-);
+
+  const related = await Product.find({
+    category: product.category,
+
+    _id: {
+      $ne: product._id,
+    },
+  })
+    .limit(8)
+    .populate("category");
+
+  res.status(200).json({
+    status: "success",
+
+    data: related,
+  });
+});
+
+/*
+=====================================================
+ADMIN PRODUCT STATISTICS
+=====================================================
+*/
+
+exports.productStats = catchAsync(async (req, res) => {
+  const total = await Product.countDocuments();
+
+  const trending = await Product.countDocuments({
+    isTrending: true,
+  });
+
+  const flashSale = await Product.countDocuments({
+    isFlashSale: true,
+  });
+
+  const stock = await Product.aggregate([
+    {
+      $group: {
+        _id: null,
+
+        totalStock: {
+          $sum: "$stock",
+        },
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    status: "success",
+
+    data: {
+      total,
+
+      trending,
+
+      flashSale,
+
+      totalStock: stock[0]?.totalStock || 0,
+    },
+  });
+});
+
+/*
+=====================================================
+TOGGLE TRENDING
+=====================================================
+*/
+
+exports.toggleTrending = catchAsync(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+
+  product.isTrending = !product.isTrending;
+
+  await product.save();
+
+  res.status(200).json({
+    status: "success",
+
+    data: product,
+  });
+});
+
+/*
+=====================================================
+TOGGLE FLASH SALE
+=====================================================
+*/
+
+exports.toggleFlashSale = catchAsync(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+
+  product.isFlashSale = !product.isFlashSale;
+
+  await product.save();
+
+  res.status(200).json({
+    status: "success",
+
+    data: product,
+  });
+});
+
+/*
+=====================================================
+TOGGLE ACTIVE
+=====================================================
+*/
+
+exports.toggleActive = catchAsync(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+
+  product.active = !product.active;
+
+  await product.save();
+
+  res.status(200).json({
+    status: "success",
+
+    data: product,
+  });
+});
