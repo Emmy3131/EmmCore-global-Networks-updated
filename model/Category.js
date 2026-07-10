@@ -34,9 +34,9 @@ const categorySchema = new mongoose.Schema(
 );
 
 // AUTO CREATE SLUG
-categorySchema.pre("save", function (next) {
+categorySchema.pre("save", function () {
   this.slug = slugify(this.name, { lower: true });
-  next();
+  // next();
 });
 
 const Category = mongoose.model("Category", categorySchema);
