@@ -17,10 +17,7 @@ router.get("/", productController.getProducts);
 
 
 router.get("/admin/stats", productController.productStats);
-<Route
- path="/admin/products/edit/:id"
- element={<EditProduct />}
-/>
+
 
 // Search
 router.get("/search", productController.searchProducts);

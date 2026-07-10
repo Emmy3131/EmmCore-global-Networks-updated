@@ -332,8 +332,12 @@ TOGGLE TRENDING
 =====================================================
 */
 
-exports.toggleTrending = catchAsync(async (req, res) => {
+exports.toggleTrending = catchAsync(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    return next(new AppError("Product not found", 404));
+  }
 
   product.isTrending = !product.isTrending;
 
@@ -341,7 +345,6 @@ exports.toggleTrending = catchAsync(async (req, res) => {
 
   res.status(200).json({
     status: "success",
-
     data: product,
   });
 });
@@ -354,6 +357,10 @@ TOGGLE FLASH SALE
 
 exports.toggleFlashSale = catchAsync(async (req, res) => {
   const product = await Product.findById(req.params.id);
+
+   if (!product) {
+    return next(new AppError("Product not found", 404));
+  }
 
   product.isFlashSale = !product.isFlashSale;
 
@@ -375,6 +382,10 @@ TOGGLE ACTIVE
 exports.toggleActive = catchAsync(async (req, res) => {
   const product = await Product.findById(req.params.id);
 
+   if (!product) {
+    return next(new AppError("Product not found", 404));
+  }
+
   product.active = !product.active;
 
   await product.save();
@@ -382,6 +393,29 @@ exports.toggleActive = catchAsync(async (req, res) => {
   res.status(200).json({
     status: "success",
 
+    data: product,
+  });
+});
+
+/*
+=====================================================
+TOGGLE FEATURED
+=====================================================
+*/
+
+exports.toggleFeatured = catchAsync(async (req, res, next) => {
+  const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    return next(new AppError("Product not found", 404));
+  }
+
+  product.isFeatured = !product.isFeatured;
+
+  await product.save();
+
+  res.status(200).json({
+    status: "success",
     data: product,
   });
 });

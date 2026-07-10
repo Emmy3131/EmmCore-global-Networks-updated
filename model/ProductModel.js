@@ -71,6 +71,11 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+
     flashSalePrice: {
       type: Number,
       default: 0,
