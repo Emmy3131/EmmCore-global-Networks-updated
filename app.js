@@ -13,13 +13,14 @@ const statsRoutes = require("./routes/statsRoutes");
 const newsletterRoutes = require("./routes/NewsletterSubRoutes");
 const heroBannerRoutes = require("./routes/HeroBannerRoutes");
 const pageRoutes = require("./routes/pageRoutes");
+const reportRouter = require("./routes/ReportRoutes");
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");
 
 const app = express();
 
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 /* ======================
    ✅ CORS FIRST
@@ -45,7 +46,7 @@ app.use(
       return callback(null, false); // ❌ don't crash server
     },
     credentials: true,
-  })
+  }),
 );
 /* ======================
    SECURITY
@@ -65,10 +66,7 @@ app.use(hpp());
    BODY PARSER
 ====================== */
 
-app.use(
-  "/api/v1/orders/webhook",
-  express.raw({ type: "application/json" })
-);
+app.use("/api/v1/orders/webhook", express.raw({ type: "application/json" }));
 
 app.use(express.json());
 
@@ -79,6 +77,7 @@ app.set("query parser", "extended");
 ====================== */
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/categories", categoryRoutes);
