@@ -1,57 +1,72 @@
 const Order = require("../model/OrderModel");
-const Product = require("../model/ProductModel");
 const User = require("../model/UserModel");
+const Product = require("../model/ProductModel");
 
 const catchAsync = require("../utils/catchAsync");
 
-exports.getReports = catchAsync(async (req, res) => {
-  // TOTAL ORDERS
+/*
+=====================================================
+REPORT SUMMARY
+=====================================================
+*/
+
+exports.getReportSummary = catchAsync(async (req, res) => {
   const totalOrders = await Order.countDocuments();
 
-  // TOTAL USERS
   const totalUsers = await User.countDocuments();
 
-  // TOTAL REVENUE
-
-  const revenue = await Order.aggregate([
+  const sales = await Order.aggregate([
     {
       $match: {
-        status: "completed",
+        status: {
+          $in: ["paid", "completed", "delivered"],
+        },
       },
     },
+
     {
       $group: {
         _id: null,
-        total: {
+
+        totalRevenue: {
           $sum: "$totalPrice",
         },
       },
     },
   ]);
 
-  // TOTAL PRODUCTS SOLD
+  const totalRevenue = sales[0]?.totalRevenue || 0;
 
+  const totalProducts = await Product.countDocuments();
+
+  res.status(200).json({
+    status: "success",
+
+    data: {
+      totalOrders,
+
+      totalUsers,
+
+      totalProducts,
+
+      totalRevenue,
+    },
+  });
+});
+
+/*
+=====================================================
+MONTHLY SALES CHART
+=====================================================
+*/
+
+exports.getSalesReport = catchAsync(async (req, res) => {
   const sales = await Order.aggregate([
     {
-      $unwind: "$items",
-    },
-
-    {
-      $group: {
-        _id: null,
-        total: {
-          $sum: "$items.quantity",
-        },
-      },
-    },
-  ]);
-
-  // MONTHLY SALES
-
-  const monthlySales = await Order.aggregate([
-    {
       $match: {
-        status: "completed",
+        status: {
+          $in: ["paid", "completed", "delivered"],
+        },
       },
     },
 
@@ -61,24 +76,69 @@ exports.getReports = catchAsync(async (req, res) => {
           month: {
             $month: "$createdAt",
           },
+
+          year: {
+            $year: "$createdAt",
+          },
         },
 
-        sales: {
+        revenue: {
           $sum: "$totalPrice",
+        },
+
+        orders: {
+          $sum: 1,
         },
       },
     },
 
     {
       $sort: {
+        "_id.year": 1,
         "_id.month": 1,
       },
     },
   ]);
 
-  // TOP PRODUCTS
+  const months = [
+    "",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
 
-  const topProducts = await Order.aggregate([
+  const formatted = sales.map((item) => ({
+    month: months[item._id.month],
+
+    revenue: item.revenue,
+
+    orders: item.orders,
+  }));
+
+  res.status(200).json({
+    status: "success",
+
+    data: formatted,
+  });
+});
+
+/*
+=====================================================
+TOP SELLING PRODUCTS
+=====================================================
+*/
+
+exports.getTopProducts = catchAsync(async (req, res) => {
+  const products = await Order.aggregate([
     {
       $unwind: "$items",
     },
@@ -87,7 +147,7 @@ exports.getReports = catchAsync(async (req, res) => {
       $group: {
         _id: "$items.product",
 
-        sold: {
+        totalSold: {
           $sum: "$items.quantity",
         },
       },
@@ -95,19 +155,22 @@ exports.getReports = catchAsync(async (req, res) => {
 
     {
       $sort: {
-        sold: -1,
+        totalSold: -1,
       },
     },
 
     {
-      $limit: 5,
+      $limit: 10,
     },
 
     {
       $lookup: {
         from: "products",
+
         localField: "_id",
+
         foreignField: "_id",
+
         as: "product",
       },
     },
@@ -120,18 +183,32 @@ exports.getReports = catchAsync(async (req, res) => {
   res.status(200).json({
     status: "success",
 
-    data: {
-      totalOrders,
+    data: products,
+  });
+});
 
-      totalUsers,
+/*
+=====================================================
+ORDER STATUS REPORT
+=====================================================
+*/
 
-      totalSales: sales[0]?.total || 0,
+exports.getOrderStatusReport = catchAsync(async (req, res) => {
+  const report = await Order.aggregate([
+    {
+      $group: {
+        _id: "$status",
 
-      totalRevenue: revenue[0]?.total || 0,
-
-      monthlySales,
-
-      topProducts,
+        count: {
+          $sum: 1,
+        },
+      },
     },
+  ]);
+
+  res.status(200).json({
+    status: "success",
+
+    data: report,
   });
 });

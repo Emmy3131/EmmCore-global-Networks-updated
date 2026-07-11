@@ -10,6 +10,12 @@ router.use(authController.protect);
 
 router.use(authController.restrictTo("admin"));
 
-router.get("/", reportController.getReports);
+router.get("/summary", reportController.getReportSummary);
+
+router.get("/sales", reportController.getSalesReport);
+
+router.get("/top-products", reportController.getTopProducts);
+
+router.get("/orders", reportController.getOrderStatusReport);
 
 module.exports = router;
