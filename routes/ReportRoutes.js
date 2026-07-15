@@ -18,4 +18,6 @@ router.get("/top-products", reportController.getTopProducts);
 
 router.get("/orders", reportController.getOrderStatusReport);
 
+router.get("/download", reportController.downloadReport);
+
 module.exports = router;

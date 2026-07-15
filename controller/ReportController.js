@@ -212,3 +212,40 @@ exports.getOrderStatusReport = catchAsync(async (req, res) => {
     data: report,
   });
 });
+
+
+exports.downloadReport = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name email")
+      .sort("-createdAt");
+
+    let csv =
+      "Order ID,Customer,Email,Amount,Payment Status,Order Status,Date\n";
+
+    orders.forEach((order) => {
+      csv +=
+        `${order._id},` +
+        `${order.user?.name || ""},` +
+        `${order.user?.email || ""},` +
+        `${order.totalPrice},` +
+        `${order.paymentStatus},` +
+        `${order.orderStatus},` +
+        `${order.createdAt.toLocaleDateString()}\n`;
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=report-${Date.now()}.csv`
+    );
+
+    res.setHeader("Content-Type", "text/csv");
+
+    res.status(200).send(csv);
+  } catch (err) {
+    res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+  }
+};
