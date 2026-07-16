@@ -14,6 +14,8 @@ const newsletterRoutes = require("./routes/NewsletterSubRoutes");
 const heroBannerRoutes = require("./routes/HeroBannerRoutes");
 const pageRoutes = require("./routes/pageRoutes");
 const reportRouter = require("./routes/ReportRoutes");
+const vendorRoutes = require("./routes/VendorRoutes");
+const reviewRoutes = require("./routes/ReviewRoutes")
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");
@@ -85,6 +87,9 @@ app.use("/api/v1/stats", statsRoutes);
 app.use("/api/v1/newsletter", newsletterRoutes);
 app.use("/api/v1/hero-banners", heroBannerRoutes);
 app.use("/api/v1/pages", pageRoutes);
+app.use("/api/v1/review", reviewRoutes)
+
+app.use("/api/v1/vendors", vendorRoutes);
 
 /* ======================
    404 HANDLER
