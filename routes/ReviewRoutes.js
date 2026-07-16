@@ -26,11 +26,11 @@ console.log({
   protect: typeof authController.protect,
   restrictTo: typeof authController.restrictTo,
 
-  createReview: typeof ReviewController.createReview,
-  getProductReviews: typeof ReviewController.getProductReviews,
-  getAllReviews: typeof ReviewController.getAllReviews,
-  updateReview: typeof ReviewController.updateReview,
-  approveReview: typeof ReviewController.approveReview,
-  rejectReview: typeof ReviewController.rejectReview,
-  deleteReview: typeof ReviewController.deleteReview,
+  createReview: typeof reviewController.createReview,
+  getProductReviews: typeof reviewController.getProductReviews,
+  getAllReviews: typeof reviewController.getAllReviews,
+  updateReview: typeof reviewController.updateReview,
+  approveReview: typeof reviewController.approveReview,
+  rejectReview: typeof reviewController.rejectReview,
+  deleteReview: typeof reviewController.deleteReview,
 });
