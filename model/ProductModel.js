@@ -97,6 +97,16 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    ratingsAverage: {
+      type: Number,
+      default: 0,
+    },
+
+    ratingsQuantity: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
