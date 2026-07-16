@@ -1,36 +1,29 @@
 const express = require("express");
-const authController = require("../controller/authController");
-const reviewController = require("../controller/ReviewController")
 
 const router = express.Router();
 
+const ReviewController = require("../controller/ReviewController");
+const authController = require("../controller/authController");
+
+// PUBLIC
+router.get("/product/:productId", ReviewController.getProductReviews);
+
+// USER
 router.use(authController.protect);
 
-router.post("/:productId", reviewController.createReview);
+router.post("/product/:productId", ReviewController.createReview);
 
-router.patch("/:id", reviewController.updateReview);
+router.patch("/:id", ReviewController.updateReview);
 
-router.delete("/:id", reviewController.deleteReview);
+// ADMIN
+router.use(authController.restrictTo("admin"));
 
-router.get("/product/:productId", reviewController.getProductReviews);
+router.get("/", ReviewController.getAllReviews);
 
-router.get("/", authController.restrictTo("admin"), reviewController.getAllReviews);
+router.patch("/:id/approve", ReviewController.approveReview);
 
-router.patch(
-    "/approve/:id",
-    authController.restrictTo("admin"),
-    reviewController.approveReview
-);
+router.patch("/:id/reject", ReviewController.rejectReview);
 
-console.log({
-  protect: typeof authController.protect,
-  restrictTo: typeof authController.restrictTo,
+router.delete("/:id", ReviewController.deleteReview);
 
-  createReview: typeof reviewController.createReview,
-  getProductReviews: typeof reviewController.getProductReviews,
-  getAllReviews: typeof reviewController.getAllReviews,
-  updateReview: typeof reviewController.updateReview,
-  approveReview: typeof reviewController.approveReview,
-  rejectReview: typeof reviewController.rejectReview,
-  deleteReview: typeof reviewController.deleteReview,
-});
+module.exports = router;
