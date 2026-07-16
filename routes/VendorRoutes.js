@@ -2,21 +2,20 @@ const express = require("express");
 
 const router = express.Router();
 
-const VendorController = require("../controller/VendorController");
+const vendorController = require("../controller/VendorController");
 
 const authController = require("../controller/authController");
 
 // PUBLIC
 
-router.get("/status", VendorController.getVendorStatus);
+router.get("/status", vendorController.getVendorStatus);
 
 // ADMIN
 
 router.patch(
   "/settings",
   authController.protect,
-  authController.restrictTo("admin"),
-  VendorController.updateVendorStatus,
+  vendorController.updateVendorStatus,
 );
 
 module.exports = router;
