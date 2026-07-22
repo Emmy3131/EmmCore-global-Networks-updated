@@ -6,12 +6,12 @@ const ReviewController = require("../controller/ReviewController");
 const authController = require("../controller/authController");
 
 // PUBLIC
-router.get("/product/:productId", ReviewController.getProductReviews);
+router.get("/:productId", ReviewController.getProductReviews);
 
 // USER
 router.use(authController.protect);
 
-router.post("/product/:productId", ReviewController.createReview);
+router.post("/:productId", ReviewController.createReview);
 
 router.patch("/:id", ReviewController.updateReview);
 
