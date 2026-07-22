@@ -355,10 +355,10 @@ TOGGLE FLASH SALE
 =====================================================
 */
 
-exports.toggleFlashSale = catchAsync(async (req, res) => {
+exports.toggleFlashSale = catchAsync(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
 
-   if (!product) {
+  if (!product) {
     return next(new AppError("Product not found", 404));
   }
 
@@ -368,7 +368,6 @@ exports.toggleFlashSale = catchAsync(async (req, res) => {
 
   res.status(200).json({
     status: "success",
-
     data: product,
   });
 });
@@ -379,10 +378,10 @@ TOGGLE ACTIVE
 =====================================================
 */
 
-exports.toggleActive = catchAsync(async (req, res) => {
+exports.toggleActive = catchAsync(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
 
-   if (!product) {
+  if (!product) {
     return next(new AppError("Product not found", 404));
   }
 
