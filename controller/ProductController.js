@@ -190,13 +190,24 @@ FLASH SALE PRODUCTS
 exports.getFlashSaleProducts = catchAsync(async (req, res) => {
   const products = await Product.find({
     isFlashSale: true,
-  }).populate("category");
+
+    flashSaleEndAt: {
+      $gt: new Date(),
+    },
+
+    flashSalePrice: {
+      $exists: true,
+      $gt: 0,
+    },
+  })
+    .populate("category")
+    .sort({
+      flashSaleEndAt: 1,
+    });
 
   res.status(200).json({
     status: "success",
-
     results: products.length,
-
     data: products,
   });
 });
