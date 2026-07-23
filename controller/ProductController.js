@@ -188,22 +188,36 @@ FLASH SALE PRODUCTS
 */
 
 exports.getFlashSaleProducts = catchAsync(async (req, res) => {
+  const now = new Date();
+
+  console.log("CURRENT SERVER DATE:", now);
+
+  const allFlashSaleProducts = await Product.find({
+    isFlashSale: true,
+  });
+
+  console.log(
+    "ALL FLASH SALE PRODUCTS:",
+    allFlashSaleProducts.map((product) => ({
+      name: product.name,
+      isFlashSale: product.isFlashSale,
+      flashSalePrice: product.flashSalePrice,
+      flashSaleEndAt: product.flashSaleEndAt,
+    }))
+  );
+
   const products = await Product.find({
     isFlashSale: true,
-
     flashSaleEndAt: {
-      $gt: new Date(),
+      $gt: now,
     },
-
     flashSalePrice: {
       $exists: true,
       $gt: 0,
     },
-  })
-    .populate("category")
-    .sort({
-      flashSaleEndAt: 1,
-    });
+  });
+
+  console.log("MATCHED FLASH SALE PRODUCTS:", products.length);
 
   res.status(200).json({
     status: "success",
