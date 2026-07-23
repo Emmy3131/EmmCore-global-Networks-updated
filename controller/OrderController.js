@@ -9,9 +9,121 @@ const Email = require("../utils/email");
 
 const crypto = require("crypto");
 
-/* ======================================================
-   GET ALL ORDERS
-====================================================== */
+/*
+=====================================================
+COMPLETE SUCCESSFUL PAYMENT
+=====================================================
+
+This helper is used by:
+
+1. Paystack Webhook
+2. Manual Payment Verification
+
+It prevents duplicated payment processing.
+*/
+
+const completeSuccessfulPayment = async (reference) => {
+  /*
+  =====================================================
+  FIND ORDER
+  =====================================================
+  */
+
+  const order = await Order.findOne({
+    "paymentResult.reference": reference,
+  });
+
+  if (!order) {
+    throw new Error(`Order not found for reference: ${reference}`);
+  }
+
+  /*
+  =====================================================
+  PREVENT DUPLICATE PROCESSING
+  =====================================================
+  */
+
+  if (order.paymentStatus === "paid") {
+    return {
+      order,
+      alreadyProcessed: true,
+    };
+  }
+
+  /*
+  =====================================================
+  CHECK STOCK BEFORE MARKING PAYMENT COMPLETE
+  =====================================================
+  */
+
+  for (const item of order.orderItems) {
+    const product = await Product.findById(item.product);
+
+    if (!product) {
+      throw new Error(`Product not found: ${item.name}`);
+    }
+
+    if (product.stock < item.quantity) {
+      throw new Error(`${product.name} does not have enough stock`);
+    }
+  }
+
+  /*
+  =====================================================
+  REDUCE STOCK
+  =====================================================
+  */
+
+  for (const item of order.orderItems) {
+    const product = await Product.findById(item.product);
+
+    product.stock -= item.quantity;
+
+    await product.save();
+  }
+
+  /*
+  =====================================================
+  UPDATE ORDER
+  =====================================================
+  */
+
+  order.paymentStatus = "paid";
+
+  order.orderStatus = "processing";
+
+  order.isPaid = true;
+
+  order.paidAt = Date.now();
+
+  await order.save();
+
+  /*
+  =====================================================
+  CLEAR CART
+  =====================================================
+  */
+
+  await Cart.deleteMany({
+    user: order.user,
+  });
+
+  console.log("PAYMENT COMPLETED SUCCESSFULLY:", reference);
+
+  console.log("CART CLEARED FOR USER:", order.user);
+
+  return {
+    order,
+    alreadyProcessed: false,
+  };
+};
+
+/*
+=====================================================
+GET ALL ORDERS
+=====================================================
+*/
+
 exports.getAllOrders = catchAsync(async (req, res, next) => {
   const orders = await Order.find()
     .populate("user", "firstName lastName email")
@@ -25,9 +137,12 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
   });
 });
 
-/* ======================================================
-   GET SINGLE ORDER
-====================================================== */
+/*
+=====================================================
+GET SINGLE ORDER
+=====================================================
+*/
+
 exports.getOrder = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.id)
     .populate("user", "firstName lastName email")
@@ -43,166 +158,253 @@ exports.getOrder = catchAsync(async (req, res, next) => {
   });
 });
 
-/* ======================================================
-   CREATE PAYSTACK CHECKOUT SESSION
-====================================================== */
+/*
+=====================================================
+CREATE PAYSTACK CHECKOUT SESSION
+=====================================================
+*/
+
 exports.getCheckoutSession = catchAsync(async (req, res, next) => {
   const userId = req.user._id;
 
-  const cart = await Cart.findOne({ user: userId });
+  /*
+  =====================================================
+  GET CART
+  =====================================================
+  */
+
+  const cart = await Cart.findOne({
+    user: userId,
+  });
 
   if (!cart || cart.items.length === 0) {
     return next(new AppError("Cart is empty", 400));
   }
 
+  /*
+  =====================================================
+  PREPARE ORDER DATA
+  =====================================================
+  */
+
   const { orderItems, totalPrice } = await prepareOrderData(cart);
+
+  /*
+  =====================================================
+  PAYSTACK PAYLOAD
+  =====================================================
+  */
 
   const payload = {
     email: req.user.email,
-    amount: totalPrice * 100,
+
+    amount: Math.round(totalPrice * 100),
+
     callback_url: `${process.env.FRONTEND_URL}/payment-success`,
+
     metadata: {
-      userId: userId,
-      orderItems: orderItems,
+      userId: userId.toString(),
+
+      orderItems,
+
       shippingAddress: req.body.shippingAddress,
+
       totalPrice,
     },
   };
+
+  /*
+  =====================================================
+  INITIALIZE PAYSTACK
+  =====================================================
+  */
 
   const response = await fetch(
     "https://api.paystack.co/transaction/initialize",
     {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json",
+
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
       },
+
       body: JSON.stringify(payload),
     },
   );
 
   const data = await response.json();
 
-  if (!response.ok) {
+  if (!response.ok || !data.status) {
     return next(
-      new AppError(data.message || "Payment initialization failed", 500),
+      new AppError(
+        data.message || "Payment initialization failed",
+
+        500,
+      ),
     );
   }
 
-  /* ======================================================
-     CREATE PENDING ORDER BEFORE PAYMENT
-  ====================================================== */
+  /*
+  =====================================================
+  CREATE PENDING ORDER
+  =====================================================
+  */
 
   await Order.create({
     user: userId,
+
     orderItems,
+
     shippingAddress: req.body.shippingAddress,
+
     paymentMethod: "paystack",
+
     paymentStatus: "pending",
+
     orderStatus: "pending",
+
     itemsPrice: totalPrice,
+
     taxPrice: 0,
+
     shippingPrice: 0,
+
     totalPrice,
+
     paymentResult: {
       reference: data.data.reference,
     },
   });
 
+  /*
+  =====================================================
+  SEND PAYMENT URL
+  =====================================================
+  */
+
   res.status(200).json({
     status: "success",
+
     data: {
       authorizationUrl: data.data.authorization_url,
+
       accessCode: data.data.access_code,
+
       reference: data.data.reference,
     },
   });
 });
 
-/* ======================================================
-   PAYSTACK WEBHOOK (FIXED + SAFE)
-====================================================== */
+/*
+=====================================================
+PAYSTACK WEBHOOK
+=====================================================
+*/
+
 exports.handlePayStackWebhook = async (req, res) => {
   try {
     const signature = req.headers["x-paystack-signature"];
 
-    const rawBody = req.body; // MUST be Buffer (from express.raw)
+    /*
+    =====================================================
+    BODY MUST BE BUFFER
+    =====================================================
+    */
+
+    const rawBody = req.body;
+
+    if (!Buffer.isBuffer(rawBody)) {
+      console.error("Paystack webhook body is not a Buffer");
+
+      return res.sendStatus(400);
+    }
+
+    /*
+    =====================================================
+    VERIFY SIGNATURE
+    =====================================================
+    */
 
     const hash = crypto
-      .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY_TEST)
+      .createHmac(
+        "sha512",
+
+        process.env.PAYSTACK_SECRET_KEY_TEST,
+      )
       .update(rawBody)
       .digest("hex");
 
     if (hash !== signature) {
+      console.error("Invalid Paystack webhook signature");
+
       return res.sendStatus(401);
     }
 
+    /*
+    =====================================================
+    PARSE EVENT
+    =====================================================
+    */
+
     const event = JSON.parse(rawBody.toString());
+
+    /*
+    =====================================================
+    SUCCESSFUL PAYMENT
+    =====================================================
+    */
 
     if (event.event === "charge.success") {
       const reference = event.data.reference;
 
-      const order = await Order.findOne({
-        "paymentResult.reference": reference,
-      });
-
-      if (!order) {
-        console.log("Order not found:", reference);
-        return res.sendStatus(200);
-      }
-
-      // prevent double processing
-      if (order.paymentStatus === "paid") {
-        return res.sendStatus(200);
-      }
-
-      // update order FIRST
-      order.paymentStatus = "paid";
-      order.orderStatus = "processing";
-      order.isPaid = true;
-      order.paidAt = Date.now();
-
-      await order.save();
-
-      // update stock
-      for (const item of order.orderItems) {
-        const product = await Product.findById(item.product);
-
-        if (product && product.stock >= item.quantity) {
-          product.stock -= item.quantity;
-          await product.save();
-        }
-      }
-
-      // FIXED CART CLEARING (IMPORTANT)
-      await Cart.deleteMany({ user: order.user });
-
-      console.log("CART CLEARED FOR USER:", order.user);
+      await completeSuccessfulPayment(reference);
 
       return res.sendStatus(200);
     }
+
+    /*
+    =====================================================
+    FAILED PAYMENT
+    =====================================================
+    */
 
     if (event.event === "charge.failed") {
       const reference = event.data.reference;
 
       await Order.findOneAndUpdate(
-        { "paymentResult.reference": reference },
-        { paymentStatus: "failed" },
+        {
+          "paymentResult.reference": reference,
+        },
+
+        {
+          paymentStatus: "failed",
+        },
       );
 
       return res.sendStatus(200);
     }
 
     return res.sendStatus(200);
-  } catch (err) {
-    console.error("Webhook error:", err);
+  } catch (error) {
+    console.error("Paystack webhook error:", error);
+
+    /*
+    IMPORTANT:
+    Always respond to Paystack.
+    */
+
     return res.sendStatus(200);
   }
 };
 
-/* ======================================================
-   VERIFY PAYMENT (MANUAL BACKUP)
-====================================================== */
+/*
+=====================================================
+VERIFY PAYMENT
+=====================================================
+*/
+
 exports.verifyPayment = catchAsync(async (req, res, next) => {
   const { reference } = req.query;
 
@@ -210,8 +412,15 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
     return next(new AppError("Payment reference missing", 400));
   }
 
+  /*
+    =====================================================
+    VERIFY WITH PAYSTACK
+    =====================================================
+    */
+
   const response = await fetch(
     `https://api.paystack.co/transaction/verify/${reference}`,
+
     {
       headers: {
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY_TEST}`,
@@ -221,22 +430,47 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
 
   const data = await response.json();
 
-  if (!data.status) {
+  if (!response.ok || !data.status) {
     return next(new AppError("Payment verification failed", 400));
   }
 
+  /*
+    =====================================================
+    ONLY COMPLETE PAYMENT IF SUCCESSFUL
+    =====================================================
+    */
+
+  if (data.data.status === "success") {
+    await completeSuccessfulPayment(reference);
+  }
+
+  /*
+    =====================================================
+    RESPONSE
+    =====================================================
+    */
+
   res.status(200).json({
     status: "success",
-    data: data.data,
+
+    data: {
+      ...data.data,
+
+      paymentCompleted: data.data.status === "success",
+    },
   });
 });
 
-/* ======================================================
-   UPDATE ORDER STATUS (ADMIN)
-====================================================== */
+/*
+=====================================================
+UPDATE ORDER STATUS
+=====================================================
+*/
+
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.id).populate(
     "user",
+
     "firstName lastName email",
   );
 
@@ -244,28 +478,74 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     return next(new AppError("Order not found", 404));
   }
 
-  order.orderStatus = req.body.orderStatus;
+  const newStatus = req.body.orderStatus;
 
-  if (req.body.orderStatus === "delivered") {
+  if (!newStatus) {
+    return next(new AppError("Order status is required", 400));
+  }
+
+  /*
+    =====================================================
+    UPDATE STATUS
+    =====================================================
+    */
+
+  order.orderStatus = newStatus;
+
+  /*
+    =====================================================
+    DELIVERED
+    =====================================================
+    */
+
+  if (newStatus === "delivered") {
     order.isDelivered = true;
+
     order.deliveredAt = Date.now();
   }
 
-  if (req.body.orderStatus === "cancelled") {
+  /*
+    =====================================================
+    CANCELLED
+    =====================================================
+    */
+
+  if (newStatus === "cancelled") {
     order.isDelivered = false;
   }
 
   await order.save();
 
-  /* ================= EMAIL MESSAGE ================= */
+  /*
+    =====================================================
+    EMAIL DETAILS
+    =====================================================
+    */
 
-  let subject = "";
-  let message = "";
+  let subject = "Order Status Updated";
 
-  switch (order.orderStatus) {
-    case "processing":
-      subject = "Your Order is Being Processed";
-      message = `
+  let message = `
+Hello ${order.user.firstName},
+
+Your order status has been updated.
+
+Order ID: ${order._id}
+
+Current Status: ${newStatus}
+
+Thank you for shopping with us.
+`;
+
+  /*
+    =====================================================
+    PROCESSING
+    =====================================================
+    */
+
+  if (newStatus === "processing") {
+    subject = "Your Order is Being Processed";
+
+    message = `
 Hello ${order.user.firstName},
 
 Great news! 🎉
@@ -280,11 +560,18 @@ We'll notify you again once your order has been shipped.
 
 Thank you for shopping with us.
 `;
-      break;
+  }
 
-    case "shipped":
-      subject = "Your Order Has Been Shipped";
-      message = `
+  /*
+    =====================================================
+    SHIPPED
+    =====================================================
+    */
+
+  if (newStatus === "shipped") {
+    subject = "Your Order Has Been Shipped";
+
+    message = `
 Hello ${order.user.firstName},
 
 Your order has been shipped and is on its way.
@@ -297,11 +584,18 @@ Please keep an eye on your phone and email for delivery updates.
 
 Thank you for shopping with us.
 `;
-      break;
+  }
 
-    case "delivered":
-      subject = "Order Delivered";
-      message = `
+  /*
+    =====================================================
+    DELIVERED
+    =====================================================
+    */
+
+  if (newStatus === "delivered") {
+    subject = "Order Delivered";
+
+    message = `
 Hello ${order.user.firstName},
 
 Your order has been delivered successfully.
@@ -312,11 +606,18 @@ We hope you enjoy your purchase.
 
 Thank you for choosing our store. ❤️
 `;
-      break;
+  }
 
-    case "cancelled":
-      subject = "Order Cancelled";
-      message = `
+  /*
+    =====================================================
+    CANCELLED
+    =====================================================
+    */
+
+  if (newStatus === "cancelled") {
+    subject = "Order Cancelled";
+
+    message = `
 Hello ${order.user.firstName},
 
 Your order has been cancelled.
@@ -327,44 +628,37 @@ If you did not request this cancellation, please contact our support team.
 
 Thank you.
 `;
-      break;
-
-    default:
-      subject = "Order Updated";
-      message = `
-Hello ${order.user.firstName},
-
-Your order status has been updated.
-
-Current Status: ${order.orderStatus}
-
-Order ID: ${order._id}
-
-Thank you for shopping with us.
-`;
   }
 
-  /* ================= SEND EMAIL ================= */
+  /*
+    =====================================================
+    SEND EMAIL
+    =====================================================
+    */
 
   try {
-  const email = new Email(order.user);
+    const email = new Email(order.user);
 
-  await email.send(subject, message);
+    await email.send(subject, message);
 
-  console.log("Order status email sent.");
-} catch (err) {
-  console.error("Email sending failed:", err);
-}
+    console.log("Order status email sent");
+  } catch (error) {
+    console.error("Email sending failed:", error);
+  }
 
   res.status(200).json({
     status: "success",
+
     data: order,
   });
 });
 
-/* ======================================================
-   DELETE ORDER
-====================================================== */
+/*
+=====================================================
+DELETE ORDER
+=====================================================
+*/
+
 exports.deleteOrder = catchAsync(async (req, res, next) => {
   const order = await Order.findByIdAndDelete(req.params.id);
 
@@ -374,21 +668,29 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: "success",
+
     message: "Order deleted successfully",
   });
 });
 
-/* ======================================================
-   GET MY ORDERS
-====================================================== */
+/*
+=====================================================
+GET MY ORDERS
+=====================================================
+*/
+
 exports.getMyOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id })
+  const orders = await Order.find({
+    user: req.user._id,
+  })
     .populate("orderItems.product")
     .sort("-createdAt");
 
   res.status(200).json({
     status: "success",
+
     results: orders.length,
+
     data: orders,
   });
 });
