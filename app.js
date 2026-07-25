@@ -16,6 +16,7 @@ const pageRoutes = require("./routes/pageRoutes");
 const reportRouter = require("./routes/ReportRoutes");
 const vendorRoutes = require("./routes/VendorRoutes");
 const reviewRoutes = require("./routes/ReviewRoutes");
+const wishListRoutes = require("./routes/WishListRoutes")
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");
@@ -89,6 +90,7 @@ app.use("/api/v1/hero-banners", heroBannerRoutes);
 app.use("/api/v1/pages", pageRoutes);
 app.use("/api/v1/vendors", vendorRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/wishlist", wishListRoutes);
 
 /* ======================
    404 HANDLER
