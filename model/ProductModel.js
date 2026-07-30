@@ -141,13 +141,10 @@ productSchema.pre("save", function (next) {
 
   if (!this.sku) {
     const random = Math.floor(100000 + Math.random() * 900000);
+
     this.sku = `PRD-${random}`;
   }
 
-  next();
-});
-
-productSchema.pre("save", function (next) {
   if (this.isFlashSale && this.flashSalePrice >= this.price) {
     return next(
       new Error("Flash sale price must be lower than product price."),
