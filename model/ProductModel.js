@@ -133,7 +133,7 @@ productSchema.virtual("stockStatus").get(function () {
   return "In Stock";
 });
 
-productSchema.pre("save", function (next) {
+productSchema.pre("save", async function () {
   this.slug = slugify(this.name, {
     lower: true,
     strict: true,
@@ -146,12 +146,8 @@ productSchema.pre("save", function (next) {
   }
 
   if (this.isFlashSale && this.flashSalePrice >= this.price) {
-    return next(
-      new Error("Flash sale price must be lower than product price."),
-    );
+    throw new Error("Flash sale price must be lower than product price.");
   }
-
-  next();
 });
 
 productSchema.index({
