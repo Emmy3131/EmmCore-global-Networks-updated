@@ -17,11 +17,7 @@ router.post(
 );
 
 /* ================= VERIFY PAYMENT ================= */
-router.get(
-  "/verify-payment",
-  authController.protect,
-  orderController.verifyPayment,
-);
+router.get("/verify-payment", orderController.verifyPayment,);
 
 /* ================= PAYSTACK WEBHOOK ================= */
 
