@@ -274,30 +274,90 @@ exports.toggleUserStatus = async (req, res) => {
   }
 };
 
+exports.getMyAddresses = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("addresses");
+
+    res.status(200).json({
+      status: "success",
+
+      data: {
+        addresses: user.addresses,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+
+      message: error.message,
+    });
+  }
+};
+
+exports.addAddress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    user.addresses.push(req.body);
+
+    await user.save();
+
+    res.status(201).json({
+      status: "success",
+
+      message: "Address saved successfully",
+
+      data: {
+        addresses: user.addresses,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+
+      message: error.message,
+    });
+  }
+};
+
+exports.deleteAddress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    user.addresses = user.addresses.filter(
+      (address) => address._id.toString() !== req.params.id,
+    );
+
+    await user.save();
+
+    res.status(200).json({
+      status: "success",
+
+      message: "Address deleted",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+
+      message: error.message,
+    });
+  }
+};
 
 exports.updatePassword = async (req, res, next) => {
   try {
-
-    const {
-      currentPassword,
-      newPassword,
-    } = req.body;
-
+    const { currentPassword, newPassword } = req.body;
 
     // 1. Check if passwords were provided
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         status: "fail",
-        message:
-          "Please provide current password and new password",
+        message: "Please provide current password and new password",
       });
     }
 
-
     // 2. Get current user with password
-    const user = await User.findById(req.user.id)
-      .select("+password");
-
+    const user = await User.findById(req.user.id).select("+password");
 
     if (!user) {
       return res.status(404).json({
@@ -306,15 +366,11 @@ exports.updatePassword = async (req, res, next) => {
       });
     }
 
-
-
     // 3. Check current password
-    const isCorrectPassword =
-      await user.correctPassword(
-        currentPassword,
-        user.password
-      );
-
+    const isCorrectPassword = await user.correctPassword(
+      currentPassword,
+      user.password,
+    );
 
     if (!isCorrectPassword) {
       return res.status(401).json({
@@ -323,41 +379,25 @@ exports.updatePassword = async (req, res, next) => {
       });
     }
 
-
-
     // 4. Update password
     user.password = newPassword;
     user.passwordConfirm = newPassword;
 
-
     // 5. Save (runs bcrypt hashing middleware)
     await user.save();
 
-
-
     res.status(200).json({
-
       status: "success",
 
-      message:
-        "Password updated successfully",
-
+      message: "Password updated successfully",
     });
-
-
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
+      status: "error",
 
-      status:"error",
-
-      message:error.message,
-
+      message: error.message,
     });
-
   }
-
 };

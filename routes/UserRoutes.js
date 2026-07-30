@@ -11,7 +11,22 @@ router.patch("/resetPassword/:token", authController.resetPassword);
 router.get("/me", authController.protect, authController.getMe);
 router.patch("/:id/toggle-status", userController.toggleUserStatus);
 router.patch("/updateMe", authController.protect, userController.updateMe);
-router.patch("/updatePassword", authController.protect, userController.updatePassword,);
+router.patch(
+  "/updatePassword",
+  authController.protect,
+  userController.updatePassword,
+);
+
+router
+  .route("/addresses")
+  .get(authController.protect, UserController.getMyAddresses)
+  .post(authController.protect, userController.addAddress);
+
+router.delete(
+  "/addresses/:id",
+  authController.protect,
+  userController.deleteAddress,
+);
 
 //router.post('/login', userController.login)
 
