@@ -19,7 +19,7 @@ router.patch(
 
 router
   .route("/addresses")
-  .get(authController.protect, UserController.getMyAddresses)
+  .get(authController.protect, userController.getMyAddresses)
   .post(authController.protect, userController.addAddress);
 
 router.delete(
