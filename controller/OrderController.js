@@ -429,6 +429,9 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
   );
 
   const data = await response.json();
+  console.log("Paystack Verify Response");
+
+  console.log(data);
 
   if (!response.ok || !data.status) {
     return next(new AppError("Payment verification failed", 400));
@@ -441,8 +444,10 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
     */
 
   if (data.data.status === "success") {
+    console.log("Completing order...");
     await completeSuccessfulPayment(reference);
   }
+  console.log("Order completed");
 
   /*
     =====================================================

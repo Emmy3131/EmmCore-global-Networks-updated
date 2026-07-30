@@ -19,8 +19,6 @@ router.post(
   orderController.getCheckoutSession,
 );
 
-
-
 /* ================= PAYSTACK WEBHOOK ================= */
 
 /* NO AUTH HERE */
