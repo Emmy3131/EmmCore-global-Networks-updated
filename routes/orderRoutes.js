@@ -9,6 +9,9 @@ router.post(
   express.raw({ type: "application/json" }), orderController.handlePayStackWebhook,
 );
 
+/* ================= VERIFY PAYMENT ================= */
+router.get("/verify-payment", orderController.verifyPayment,);
+
 /* ================= CHECKOUT ================= */
 router.post(
   "/checkout",
@@ -16,8 +19,7 @@ router.post(
   orderController.getCheckoutSession,
 );
 
-/* ================= VERIFY PAYMENT ================= */
-router.get("/verify-payment", orderController.verifyPayment,);
+
 
 /* ================= PAYSTACK WEBHOOK ================= */
 
