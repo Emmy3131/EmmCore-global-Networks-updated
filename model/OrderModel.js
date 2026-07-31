@@ -30,11 +30,37 @@ const orderSchema = new mongoose.Schema(
     orderItems: [orderItemSchema],
 
     shippingAddress: {
-      fullName: String,
-      address: String,
-      city: String,
-      state: String,
-      phone: String,
+      fullName: {
+        type: String,
+        required: true,
+      },
+
+      phone: {
+        type: String,
+        required: true,
+      },
+
+      country: {
+        type: String,
+        default: "Nigeria",
+      },
+
+      state: {
+        type: String,
+        required: true,
+      },
+
+      city: {
+        type: String,
+        required: true,
+      },
+
+      address: {
+        type: String,
+        required: true,
+      },
+
+      postalCode: String,
     },
 
     paymentMethod: {
@@ -48,7 +74,7 @@ const orderSchema = new mongoose.Schema(
       id: String,
       reference: {
         type: String,
-        index: true,   // 🔥 VERY IMPORTANT
+        index: true, // 🔥 VERY IMPORTANT
       },
       status: String,
       email_address: String,

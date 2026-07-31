@@ -74,6 +74,12 @@ const userSchema = new mongoose.Schema(
     },
     addresses: [
       {
+        label: {
+          type: String,
+          enum: ["Home", "Office", "Family", "Other"],
+          default: "Home",
+        },
+
         fullName: {
           type: String,
           required: true,
@@ -84,7 +90,7 @@ const userSchema = new mongoose.Schema(
           required: true,
         },
 
-        address: {
+        state: {
           type: String,
           required: true,
         },
@@ -94,29 +100,23 @@ const userSchema = new mongoose.Schema(
           required: true,
         },
 
-        state: {
+        address: {
           type: String,
           required: true,
         },
+
+        landmark: String,
 
         country: {
           type: String,
-          required: true,
           default: "Nigeria",
         },
 
-        postalCode: {
-          type: String,
-        },
+        postalCode: String,
 
         isDefault: {
           type: Boolean,
           default: false,
-        },
-
-        createdAt: {
-          type: Date,
-          default: Date.now,
         },
       },
     ],

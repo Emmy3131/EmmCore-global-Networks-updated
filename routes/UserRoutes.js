@@ -22,6 +22,24 @@ router
   .get(authController.protect, userController.getMyAddresses)
   .post(authController.protect, userController.addAddress);
 
+router.patch(
+  "/addresses/:id",
+  authController.protect,
+  userController.updateAddress,
+);
+
+router.patch(
+  "/addresses/:id/default",
+  authController.protect,
+  userController.setDefaultAddress,
+);
+
+router.get(
+  "/addresses/default",
+  authController.protect,
+  userController.getDefaultAddress,
+);
+
 router.delete(
   "/addresses/:id",
   authController.protect,
