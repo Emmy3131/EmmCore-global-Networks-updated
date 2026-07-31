@@ -341,7 +341,7 @@ exports.addAddress = async (req, res) => {
       isDefault: req.body.isDefault,
     });
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     res.status(201).json({
       status: "success",
@@ -376,7 +376,7 @@ exports.updateAddress = async (req, res) => {
 
     Object.assign(address, req.body);
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     res.status(200).json({
       status: "success",
@@ -421,7 +421,7 @@ exports.deleteAddress = async (req, res) => {
       user.addresses[0].isDefault = true;
     }
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     res.status(200).json({
       status: "success",
@@ -448,7 +448,7 @@ exports.setDefaultAddress = async (req, res) => {
         address._id.toString() === req.params.id;
     });
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     res.status(200).json({
       status: "success",
