@@ -2,7 +2,7 @@ const Withdrawal = require("../model/WithdrawalModel");
 
 const User = require("../model/UserModel");
 
-const WalletTransaction = require("../model/WalletTransactionModel");
+const WalletTransaction = require("../model/WalletTransanctionModel");
 
 const catchAsync = require("../utils/catchAsync");
 

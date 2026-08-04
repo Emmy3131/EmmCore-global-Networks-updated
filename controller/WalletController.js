@@ -1,4 +1,4 @@
-const WalletTransaction = require("../model/WalletTransactionModel");
+const WalletTransaction = require("../model/WalletTransanctionModel");
 
 const catchAsync = require("../utils/catchAsync");
 
