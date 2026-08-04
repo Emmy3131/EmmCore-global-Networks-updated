@@ -2,7 +2,7 @@ const Referral = require("../model/RefferalModel");
 const User = require("../model/UserModel");
 
 const { referralBonus, minimumOrderAmount } = require("../utils/referral");
-const WalletTransaction = require("../model/WalletTransactionModel");
+const WalletTransaction = require("../model/WalletTransanctionModel");
 
 /*
 ==================================================
