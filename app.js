@@ -16,7 +16,8 @@ const pageRoutes = require("./routes/pageRoutes");
 const reportRouter = require("./routes/ReportRoutes");
 const vendorRoutes = require("./routes/VendorRoutes");
 const reviewRoutes = require("./routes/ReviewRoutes");
-const wishListRoutes = require("./routes/WishListRoutes")
+const wishListRoutes = require("./routes/WishListRoutes");
+const referralRoutes = require("./routes/ReferralRoutes");
 
 const AppError = require("./utils/appError");
 const globalErrorController = require("./controller/GlobalErrorController");
@@ -82,6 +83,7 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/orders", orderRouter);
+app.use("/api/v1/referrals", referralRoutes);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/stats", statsRoutes);

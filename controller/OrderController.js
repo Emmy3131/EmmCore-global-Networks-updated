@@ -6,6 +6,7 @@ const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const prepareOrderData = require("../utils/prepareOrderData");
 const Email = require("../utils/email");
+const referralServices = require("../services/ReferralServices");
 
 const crypto = require("crypto");
 
@@ -84,7 +85,7 @@ const completeSuccessfulPayment = async (reference) => {
 
   /*
   =====================================================
-  UPDATE ORDER
+  UPDATE ORDER PAYMENT
   =====================================================
   */
 
@@ -97,6 +98,30 @@ const completeSuccessfulPayment = async (reference) => {
   order.paidAt = Date.now();
 
   await order.save();
+
+  /*
+  =====================================================
+  PROCESS REFERRAL BONUS
+  =====================================================
+
+  If this customer was referred,
+  qualify and reward the referrer.
+  
+  */
+
+  try {
+    await referralService.processOrderReferral({
+      userId: order.user,
+
+      orderId: order._id,
+
+      orderAmount: order.totalPrice,
+    });
+
+    console.log("REFERRAL PROCESSED SUCCESSFULLY");
+  } catch (error) {
+    console.error("REFERRAL PROCESSING ERROR:", error.message);
+  }
 
   /*
   =====================================================
@@ -114,6 +139,7 @@ const completeSuccessfulPayment = async (reference) => {
 
   return {
     order,
+
     alreadyProcessed: false,
   };
 };

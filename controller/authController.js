@@ -7,7 +7,7 @@ const { promisify } = require("util");
 const crypto = require("crypto");
 const Email = require("./../utils/email");
 const orderModel = require("../model/OrderModel");
-
+const referralService = require("../services/ReferralServices");
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -23,7 +23,6 @@ const createSendToken = (user, res, req, statusCode) => {
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
     ),
 
-    
     //secure:true,
     httpOnly: true,
     secure: true, // ✅ ENSURE SECURE IN PRODUCTION
@@ -41,24 +40,53 @@ const createSendToken = (user, res, req, statusCode) => {
   });
 };
 
+
 exports.signup = catchAsync(async (req, res, next) => {
+  // Get referral code from signup request
+  const { referralCode } = req.body;
+
+  // Create User
   const user = await User.create({
     firstName: req.body.firstName,
+
     lastName: req.body.lastName,
+
     email: req.body.email,
+
     password: req.body.password,
+
     passwordConfirm: req.body.passwordConfirm,
+
     phone: req.body.phone,
+
     country: req.body.country,
+
     address: req.body.address,
+
     dateOfBirth: req.body.dateOfBirth,
+
     gender: req.body.gender,
   });
+
+  /*
+  =====================================
+  CREATE REFERRAL RECORD
+  =====================================
+  */
+
+  if (referralCode) {
+    await referralService.createReferral({
+      referralCode,
+
+      newUserId: user._id,
+    });
+  }
+
+  // Login user
   createSendToken(user, res, req, 201);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
-
   //1) Check if email and password exist
   const { email, password } = req.body;
   if (!email || !password) {
@@ -79,13 +107,12 @@ exports.login = catchAsync(async (req, res, next) => {
 });
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
-
   // 1) Get user
   const user = await User.findOne({ email: req.body.email });
 
   if (!user) {
     return next(
-      new AppError("There is no user with that email address.", 404, "")
+      new AppError("There is no user with that email address.", 404, ""),
     );
   }
 
@@ -94,21 +121,18 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   // ✅ 3) CREATE RESET LINK
- const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
- console.log(resetURL);
+  const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  console.log(resetURL);
 
   try {
-
     // ✅ SEND LINK NOT TOKEN
     await new Email(user, resetURL).sendPasswordReset();
 
     res.status(200).json({
       status: "success",
-      message: "Confirm the link sent to your email!"
+      message: "Confirm the link sent to your email!",
     });
-
   } catch (err) {
-
     console.log(err);
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
@@ -119,8 +143,8 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       new AppError(
         "There was an error sending the email. Try again later!",
         500,
-        ""
-      )
+        "",
+      ),
     );
   }
 });

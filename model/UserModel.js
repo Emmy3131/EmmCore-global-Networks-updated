@@ -135,9 +135,30 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+
+    referralCode: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+
+    referralBonus: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );
+
+// run on refferral code
+userSchema.pre("save", function (next) {
+  if (!this.referralCode) {
+    this.referralCode =
+      "EMM" + crypto.randomBytes(4).toString("hex").toUpperCase();
+  }
+
+  next();
+});
 
 userSchema.pre("save", async function () {
   // Only run if password was modified
