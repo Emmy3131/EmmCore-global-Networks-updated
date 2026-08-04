@@ -164,13 +164,11 @@ const userSchema = new mongoose.Schema(
 );
 
 // run on refferral code
-userSchema.pre("save", function (next) {
+userSchema.pre("save", function () {
   if (!this.referralCode) {
     this.referralCode =
       "EMM" + crypto.randomBytes(4).toString("hex").toUpperCase();
   }
-
-  next();
 });
 
 userSchema.pre("save", async function () {
