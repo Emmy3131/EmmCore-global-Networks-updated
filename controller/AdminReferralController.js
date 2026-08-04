@@ -1,4 +1,4 @@
-const Referral = require("../model/ReferralModel");
+const Referral = require("../model/RefferalModel");
 const catchAsync = require("../utils/catchAsync");
 
 /*
