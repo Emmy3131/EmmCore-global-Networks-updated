@@ -2,6 +2,7 @@ const Referral = require("../model/RefferalModel");
 const User = require("../model/UserModel");
 
 const { referralBonus, minimumOrderAmount } = require("../utils/referral");
+const WalletTransaction = require("../model/WalletTransactionModel");
 
 /*
 ==================================================
@@ -99,28 +100,59 @@ exports.rewardReferral = async ({ referralId }) => {
     return null;
   }
 
-  // Prevent double reward
   if (referral.status === "rewarded") {
     return referral;
   }
 
-  const referrer = await User.findById(referral.referrer);
+  const user = await User.findById(referral.referrer);
 
-  if (!referrer) {
+  if (!user) {
     return null;
   }
 
+  const oldBalance = user.walletBalance || 0;
+
+  const newBalance = oldBalance + referral.rewardAmount;
+
   /*
-    Here we update referral earnings
+=====================================
+UPDATE USER WALLET
+=====================================
+*/
 
-    Later we can move this into
-    Wallet / Transaction model
-  */
+  user.walletBalance = newBalance;
 
-  referrer.referralBonus =
-    (referrer.referralBonus || 0) + referral.rewardAmount;
+  await user.save();
 
-  await referrer.save();
+  /*
+=====================================
+CREATE TRANSACTION RECORD
+=====================================
+*/
+
+  await WalletTransaction.create({
+    user: user._id,
+
+    type: "credit",
+
+    source: "referral",
+
+    title: "Referral Bonus",
+
+    amount: referral.rewardAmount,
+
+    balanceBefore: oldBalance,
+
+    balanceAfter: newBalance,
+
+    reference: `REF-${referral._id}`,
+  });
+
+  /*
+=====================================
+UPDATE REFERRAL STATUS
+=====================================
+*/
 
   referral.status = "rewarded";
 

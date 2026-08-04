@@ -146,6 +146,19 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
+
+    bankAccount: {
+      bankName: String,
+
+      accountName: String,
+
+      accountNumber: String,
+    },
   },
   { timestamps: true },
 );
