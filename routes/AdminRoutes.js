@@ -2,28 +2,54 @@ const router = require("express").Router();
 
 const authController = require("../controller/authController");
 
-const referralController = require("../controller/AdminReferralController");
+const referralController = require("../controller/ReferralController");
 
-const withdrawalController = require("../controller/AdminWithdrawalController");
+const adminWithdrawalController = require("../controller/AdminWithdrawalController");
+
+/*
+=====================================================
+PROTECT ALL ADMIN ROUTES
+=====================================================
+*/
 
 router.use(authController.protect);
 
 router.use(authController.restrictTo("admin"));
 
 /*
-=================================
+=====================================================
 REFERRALS
-=================================
+=====================================================
 */
 
+// Get all referrals
 router.get("/referrals", referralController.getAllReferrals);
 
 /*
-=================================
+=====================================================
 WITHDRAWALS
-=================================
+=====================================================
 */
 
-router.get("/withdrawals", withdrawalController.getAllWithdrawals);
+// Get all withdrawal requests
+router.get("/withdrawals", adminWithdrawalController.getAllWithdrawals);
+
+// Approve withdrawal
+router.patch(
+  "/withdrawals/:id/approve",
+  adminWithdrawalController.approveWithdrawal,
+);
+
+// Reject withdrawal
+router.patch(
+  "/withdrawals/:id/reject",
+  adminWithdrawalController.rejectWithdrawal,
+);
+
+// Mark approved withdrawal as paid
+router.patch(
+  "/withdrawals/:id/paid",
+  adminWithdrawalController.markWithdrawalPaid,
+);
 
 module.exports = router;
