@@ -41,28 +41,26 @@ ADMIN WITHDRAWALS
 =====================================================
 */
 
+/*
+GET ALL WITHDRAWALS
+GET /api/v1/withdrawals/admin/all
+*/
+
 router.get(
   "/admin/all",
   authController.restrictTo("admin"),
   WithdrawalController.getAllWithdrawals,
 );
 
-router.patch(
-  "/admin/:id/approve",
-  authController.restrictTo("admin"),
-  WithdrawalController.approveWithdrawal,
-);
+/*
+APPROVE / REJECT / MARK PAID
+PATCH /api/v1/withdrawals/admin/:id
+*/
 
 router.patch(
-  "/admin/:id/reject",
+  "/admin/:id",
   authController.restrictTo("admin"),
-  WithdrawalController.rejectWithdrawal,
-);
-
-router.patch(
-  "/admin/:id/paid",
-  authController.restrictTo("admin"),
-  WithdrawalController.markWithdrawalPaid,
+  WithdrawalController.updateWithdrawal,
 );
 
 /*
