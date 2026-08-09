@@ -97,7 +97,7 @@ app.use("/api/v1/pages", pageRoutes);
 app.use("/api/v1/vendors", vendorRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/wishlist", wishListRoutes);
-app.use("/api/v1/withdral", withdrawalRoutes);
+app.use("/api/v1/withdrawal", withdrawalRoutes);
 app.use("/api/v1/admin", adminReferralRoutes);
 
 /* ======================
