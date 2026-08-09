@@ -1,17 +1,76 @@
-const router = require("express").Router();
+const express = require("express");
 
-const withdrawalController = require("../controller/WithrawalController");
-
+const WithdrawalController = require("../controller/WithdrawalController");
 const authController = require("../controller/authController");
+
+const router = express.Router();
+
+/*
+=====================================================
+PROTECT ALL ROUTES
+=====================================================
+*/
 
 router.use(authController.protect);
 
-router.post("/", withdrawalController.requestWithdrawal);
+/*
+=====================================================
+USER BANK ACCOUNT
+=====================================================
+*/
 
-router.get("/my", withdrawalController.getMyWithdrawals);
+router
+  .route("/bank-account")
+  .get(WithdrawalController.getMyBankAccount)
+  .post(WithdrawalController.saveBankAccount);
 
-router.use(authController.restrictTo("admin"));
+/*
+=====================================================
+USER WITHDRAWALS
+=====================================================
+*/
 
-router.patch("/:id", withdrawalController.updateWithdrawalStatus);
+router
+  .route("/")
+  .get(WithdrawalController.getMyWithdrawals)
+  .post(WithdrawalController.requestWithdrawal);
+
+/*
+=====================================================
+ADMIN WITHDRAWALS
+=====================================================
+*/
+
+router.get(
+  "/admin/all",
+  authController.restrictTo("admin"),
+  WithdrawalController.getAllWithdrawals,
+);
+
+router.patch(
+  "/admin/:id/approve",
+  authController.restrictTo("admin"),
+  WithdrawalController.approveWithdrawal,
+);
+
+router.patch(
+  "/admin/:id/reject",
+  authController.restrictTo("admin"),
+  WithdrawalController.rejectWithdrawal,
+);
+
+router.patch(
+  "/admin/:id/paid",
+  authController.restrictTo("admin"),
+  WithdrawalController.markWithdrawalPaid,
+);
+
+/*
+=====================================================
+SINGLE USER WITHDRAWAL
+=====================================================
+*/
+
+router.get("/:id", WithdrawalController.getWithdrawal);
 
 module.exports = router;
