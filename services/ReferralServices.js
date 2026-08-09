@@ -1,37 +1,52 @@
 const Referral = require("../model/RefferalModel");
 const User = require("../model/UserModel");
-
-const { referralBonus, minimumOrderAmount } = require("../utils/referral");
 const WalletTransaction = require("../model/WalletTransanctionModel");
 
+const { referralBonus, minimumOrderAmount } = require("../utils/referral");
+
 /*
-==================================================
- CREATE REFERRAL AFTER USER SIGNUP
-==================================================
+=====================================================
+CREATE REFERRAL AFTER USER SIGNUP
+=====================================================
 */
 
 exports.createReferral = async ({ referralCode, newUserId }) => {
-  // No referral code provided
   if (!referralCode) {
     return null;
   }
 
-  // Find owner of referral code
+  const normalizedCode = referralCode.trim().toUpperCase();
+
+  /*
+  =====================================================
+  FIND REFERRER
+  =====================================================
+  */
+
   const referrer = await User.findOne({
-    referralCode,
+    referralCode: normalizedCode,
   });
 
-  // Invalid referral code
   if (!referrer) {
     return null;
   }
 
-  // Prevent self referral
+  /*
+  =====================================================
+  PREVENT SELF REFERRAL
+  =====================================================
+  */
+
   if (referrer._id.toString() === newUserId.toString()) {
     return null;
   }
 
-  // Check duplicate referral
+  /*
+  =====================================================
+  CHECK DUPLICATE
+  =====================================================
+  */
+
   const existingReferral = await Referral.findOne({
     referrer: referrer._id,
     referredUser: newUserId,
@@ -41,97 +56,139 @@ exports.createReferral = async ({ referralCode, newUserId }) => {
     return existingReferral;
   }
 
+  /*
+  =====================================================
+  CREATE REFERRAL
+  =====================================================
+  */
+
   const referral = await Referral.create({
     referrer: referrer._id,
 
     referredUser: newUserId,
 
-    referralCode,
+    referralCode: normalizedCode,
 
     status: "pending",
 
     rewardAmount: referralBonus,
   });
 
+  console.log(`Referral created: ${referrer._id} referred ${newUserId}`);
+
   return referral;
 };
 
 /*
-==================================================
- QUALIFY REFERRAL AFTER FIRST ORDER
-==================================================
+=====================================================
+PROCESS REFERRAL AFTER SUCCESSFUL PAYMENT
+=====================================================
+
+This is the main function that should be called
+after a successful qualifying payment.
+=====================================================
 */
 
-exports.qualifyReferral = async ({ userId, orderId, orderAmount }) => {
-  // Check minimum order requirement
+exports.processOrderReferral = async ({ userId, orderId, orderAmount }) => {
+  /*
+  =====================================================
+  CHECK MINIMUM ORDER
+  =====================================================
+  */
+
   if (orderAmount < minimumOrderAmount) {
+    console.log(`Order ${orderId} does not qualify for referral bonus.`);
+
     return null;
   }
 
-  // Find pending referral
+  /*
+  =====================================================
+  FIND PENDING REFERRAL
+  =====================================================
+  */
+
   const referral = await Referral.findOne({
     referredUser: userId,
     status: "pending",
   });
 
   if (!referral) {
+    console.log(`No pending referral found for user ${userId}`);
+
     return null;
   }
 
-  referral.status = "qualified";
+  /*
+  =====================================================
+  FIND REFERRER
+  =====================================================
+  */
 
-  referral.qualifyingOrder = orderId;
+  const referrer = await User.findById(referral.referrer);
 
-  await referral.save();
+  if (!referrer) {
+    console.error(`Referrer not found: ${referral.referrer}`);
 
-  return referral;
-};
-
-/*
-==================================================
- PAY REFERRAL BONUS
-==================================================
-*/
-
-exports.rewardReferral = async ({ referralId }) => {
-  const referral = await Referral.findById(referralId);
-
-  if (!referral) {
     return null;
   }
 
-  if (referral.status === "rewarded") {
+  /*
+  =====================================================
+  CHECK IF BONUS WAS ALREADY PAID
+  =====================================================
+  */
+
+  const existingTransaction = await WalletTransaction.findOne({
+    user: referrer._id,
+    source: "referral",
+    reference: `REF-${referral._id}`,
+  });
+
+  if (existingTransaction) {
+    /*
+    Make sure referral status is synchronized.
+    */
+
+    referral.status = "rewarded";
+
+    referral.qualifyingOrder = orderId;
+
+    referral.rewardedAt = referral.rewardedAt || new Date();
+
+    await referral.save();
+
     return referral;
   }
 
-  const user = await User.findById(referral.referrer);
+  /*
+  =====================================================
+  WALLET BALANCE
+  =====================================================
+  */
 
-  if (!user) {
-    return null;
-  }
+  const balanceBefore = referrer.walletBalance || 0;
 
-  const oldBalance = user.walletBalance || 0;
-
-  const newBalance = oldBalance + referral.rewardAmount;
+  const balanceAfter = balanceBefore + referral.rewardAmount;
 
   /*
-=====================================
-UPDATE USER WALLET
-=====================================
-*/
+  =====================================================
+  CREDIT WALLET
+  =====================================================
+  */
 
-  user.walletBalance = newBalance;
+  referrer.walletBalance = balanceAfter;
 
-  await user.save();
+  await referrer.save();
 
   /*
-=====================================
-CREATE TRANSACTION RECORD
-=====================================
-*/
+  =====================================================
+  CREATE WALLET TRANSACTION
+  =====================================================
+  */
 
   await WalletTransaction.create({
-    user: user._id,
+    user: referrer._id,
 
     type: "credit",
 
@@ -141,32 +198,40 @@ CREATE TRANSACTION RECORD
 
     amount: referral.rewardAmount,
 
-    balanceBefore: oldBalance,
+    balanceBefore,
 
-    balanceAfter: newBalance,
+    balanceAfter,
 
     reference: `REF-${referral._id}`,
+
+    status: "completed",
   });
 
   /*
-=====================================
-UPDATE REFERRAL STATUS
-=====================================
-*/
+  =====================================================
+  UPDATE REFERRAL
+  =====================================================
+  */
 
   referral.status = "rewarded";
 
-  referral.rewardedAt = Date.now();
+  referral.qualifyingOrder = orderId;
+
+  referral.rewardedAt = new Date();
 
   await referral.save();
+
+  console.log(
+    `Referral bonus ₦${referral.rewardAmount} credited to ${referrer._id}`,
+  );
 
   return referral;
 };
 
 /*
-==================================================
- GET USER REFERRAL STATS
-==================================================
+=====================================================
+GET USER REFERRAL STATS
+=====================================================
 */
 
 exports.getReferralStats = async (userId) => {
@@ -188,56 +253,9 @@ exports.getReferralStats = async (userId) => {
 
   return {
     total,
-
     successful,
-
     pending,
-
     bonus,
-
     referrals,
   };
-};
-
-exports.processOrderReferral = async ({ userId, orderId, orderAmount }) => {
-  /*
-  Find pending referral
-  */
-
-  const referral = await Referral.findOne({
-    referredUser: userId,
-    status: "pending",
-  });
-
-  if (!referral) {
-    return null;
-  }
-
-  /*
-  Check minimum order amount
-  */
-
-  if (orderAmount < minimumOrderAmount) {
-    return null;
-  }
-
-  /*
-  Mark referral qualified
-  */
-
-  referral.status = "qualified";
-
-  referral.qualifyingOrder = orderId;
-
-  await referral.save();
-
-  /*
-  Pay reward
-  */
-
-  await exports.rewardReferral({
-    referralId: referral._id,
-  });
-
-  return referral;
 };

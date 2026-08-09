@@ -53,7 +53,7 @@ const completeSuccessfulPayment = async (reference) => {
 
   /*
   =====================================================
-  CHECK STOCK BEFORE MARKING PAYMENT COMPLETE
+  CHECK STOCK
   =====================================================
   */
 
@@ -85,7 +85,7 @@ const completeSuccessfulPayment = async (reference) => {
 
   /*
   =====================================================
-  UPDATE ORDER PAYMENT
+  MARK ORDER AS PAID
   =====================================================
   */
 
@@ -99,28 +99,52 @@ const completeSuccessfulPayment = async (reference) => {
 
   await order.save();
 
+  console.log("ORDER MARKED AS PAID:", order._id.toString());
+
   /*
   =====================================================
   PROCESS REFERRAL BONUS
   =====================================================
 
-  If this customer was referred,
-  qualify and reward the referrer.
-  
+  IMPORTANT:
+
+  This happens only after successful payment.
+
+  The referral service checks:
+
+  1. Is there a referral?
+  2. Is the order amount high enough?
+  3. Has the bonus already been paid?
+  4. Credit the referrer's wallet.
+  =====================================================
   */
 
   try {
-    await referralService.processOrderReferral({
+    const referral = await referralServices.processOrderReferral({
       userId: order.user,
-
       orderId: order._id,
-
       orderAmount: order.totalPrice,
     });
 
-    console.log("REFERRAL PROCESSED SUCCESSFULLY");
+    if (referral) {
+      console.log("REFERRAL BONUS PROCESSED:", referral._id.toString());
+    } else {
+      console.log("NO REFERRAL BONUS WAS PROCESSED FOR THIS ORDER.");
+    }
   } catch (error) {
-    console.error("REFERRAL PROCESSING ERROR:", error.message);
+    /*
+    =====================================================
+    IMPORTANT
+    =====================================================
+
+    Do not make a successful customer payment appear
+    failed because referral processing failed.
+
+    Log the error so it can be fixed/reprocessed.
+    =====================================================
+    */
+
+    console.error("REFERRAL BONUS PROCESSING FAILED:", error);
   }
 
   /*
@@ -137,9 +161,14 @@ const completeSuccessfulPayment = async (reference) => {
 
   console.log("CART CLEARED FOR USER:", order.user);
 
+  /*
+  =====================================================
+  RETURN
+  =====================================================
+  */
+
   return {
     order,
-
     alreadyProcessed: false,
   };
 };

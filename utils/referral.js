@@ -1,7 +1,8 @@
+const referralBonus = 5000;
+
+const minimumOrderAmount = 10000;
+
 module.exports = {
-
-    referralBonus:5000,
-
-    minimumOrderAmount:10000
-
+  referralBonus,
+  minimumOrderAmount,
 };
