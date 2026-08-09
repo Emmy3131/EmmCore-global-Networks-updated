@@ -1,5 +1,5 @@
 const Withdrawal = require("../model/WithdrawalModel");
-const BankAccount = require("../model/BankAccountModel");
+const BankAccount = require("../model/BankDetailsModel");
 const User = require("../model/UserModel");
 const WalletTransaction = require("../model/WalletTransanctionModel");
 
