@@ -4,17 +4,11 @@ const WalletTransaction = require("../model/WalletTransanctionModel");
 
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
-
+const Email = require("../utils/email");
 
 /*
 =====================================================
 GET ALL WITHDRAWALS
-=====================================================
-*/
-
-/*
-=====================================================
-ADMIN GET ALL WITHDRAWALS
 =====================================================
 */
 
@@ -37,6 +31,12 @@ ADMIN APPROVE WITHDRAWAL
 */
 
 exports.approveWithdrawal = catchAsync(async (req, res, next) => {
+  /*
+  =====================================================
+  FIND WITHDRAWAL
+  =====================================================
+  */
+
   const withdrawal = await Withdrawal.findById(req.params.id);
 
   if (!withdrawal) {
@@ -44,10 +44,10 @@ exports.approveWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   /*
-    =====================================================
-    ONLY PENDING WITHDRAWALS CAN BE APPROVED
-    =====================================================
-    */
+  =====================================================
+  ONLY PENDING WITHDRAWALS CAN BE APPROVED
+  =====================================================
+  */
 
   if (withdrawal.status !== "pending") {
     return next(
@@ -56,39 +56,36 @@ exports.approveWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   /*
-    =====================================================
-    GET USER
-    =====================================================
-    */
+  =====================================================
+  GET USER
+  =====================================================
+  */
 
-  const user = await User.findById(withdrawal.user).select("_id walletBalance");
+  const user = await User.findById(withdrawal.user).select(
+    "_id firstName lastName email walletBalance",
+  );
 
   if (!user) {
     return next(new AppError("User associated with withdrawal not found", 404));
   }
 
-  const currentBalance = user.walletBalance || 0;
-
   /*
-    =====================================================
-    CHECK BALANCE AGAIN
-    =====================================================
+  =====================================================
+  CHECK CURRENT WALLET BALANCE
+  =====================================================
+  */
 
-    IMPORTANT:
-
-    We check the balance again because the balance may
-    have changed after the withdrawal was requested.
-    */
+  const currentBalance = user.walletBalance || 0;
 
   if (currentBalance < withdrawal.amount) {
     return next(new AppError("User does not have enough wallet balance", 400));
   }
 
   /*
-    =====================================================
-    PREVENT DUPLICATE TRANSACTION
-    =====================================================
-    */
+  =====================================================
+  PREVENT DUPLICATE TRANSACTION
+  =====================================================
+  */
 
   const transactionReference = `WITHDRAWAL-${withdrawal._id}`;
 
@@ -105,23 +102,24 @@ exports.approveWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   /*
-    =====================================================
-    CALCULATE BALANCE
-    =====================================================
-    */
+  =====================================================
+  CALCULATE BALANCE
+  =====================================================
+  */
 
   const balanceBefore = currentBalance;
 
   const balanceAfter = balanceBefore - withdrawal.amount;
 
   /*
-    =====================================================
-    DEDUCT WALLET
-    =====================================================
+  =====================================================
+  DEDUCT WALLET
+  =====================================================
 
-    Use findByIdAndUpdate instead of user.save()
-    to avoid passwordConfirm validation.
-    */
+  IMPORTANT:
+  Use findByIdAndUpdate instead of user.save()
+  to prevent passwordConfirm validation problems.
+  */
 
   await User.findByIdAndUpdate(
     user._id,
@@ -137,10 +135,10 @@ exports.approveWithdrawal = catchAsync(async (req, res, next) => {
   );
 
   /*
-    =====================================================
-    CREATE WALLET TRANSACTION
-    =====================================================
-    */
+  =====================================================
+  CREATE WALLET TRANSACTION
+  =====================================================
+  */
 
   await WalletTransaction.create({
     user: user._id,
@@ -163,22 +161,87 @@ exports.approveWithdrawal = catchAsync(async (req, res, next) => {
   });
 
   /*
-    =====================================================
-    UPDATE WITHDRAWAL
-    =====================================================
-    */
+  =====================================================
+  UPDATE WITHDRAWAL
+  =====================================================
+  */
 
   withdrawal.status = "approved";
 
   withdrawal.processedAt = new Date();
 
+  /*
+  OPTIONAL ADMIN NOTE
+  */
+
+  if (req.body.adminNote?.trim()) {
+    withdrawal.adminNote = req.body.adminNote.trim();
+  }
+
   await withdrawal.save();
 
   /*
-    =====================================================
-    RESPONSE
-    =====================================================
+  =====================================================
+  SEND APPROVAL EMAIL
+  =====================================================
+  */
+
+  try {
+    const email = new Email(user);
+
+    const subject = "Your EmmCoreShops Withdrawal Has Been Approved";
+
+    const message = `
+Hello ${user.firstName || "Customer"},
+
+Good news! 🎉
+
+Your withdrawal request has been approved.
+
+Withdrawal Details
+------------------------------
+Amount: ₦${withdrawal.amount.toLocaleString()}
+Status: APPROVED
+Withdrawal ID: ${withdrawal._id}
+Date: ${new Date().toLocaleDateString()}
+------------------------------
+
+The withdrawal amount has been deducted from your EmmCoreShops wallet.
+
+Bank Details
+------------------------------
+Bank: ${withdrawal.bankDetails.bankName}
+Account Name: ${withdrawal.bankDetails.accountName}
+Account Number: ${withdrawal.bankDetails.accountNumber}
+------------------------------
+
+Your withdrawal is now being processed for payment.
+
+You will receive another notification when the withdrawal has been marked as paid.
+
+Thank you for using EmmCoreShops.
+
+EmmCoreShops Team
+`;
+
+    await email.send(subject, message);
+
+    console.log("Withdrawal approval email sent to:", user.email);
+  } catch (emailError) {
+    /*
+    IMPORTANT:
+    Email failure should NOT cancel the
+    successful withdrawal approval.
     */
+
+    console.error("Withdrawal approval email failed:", emailError.message);
+  }
+
+  /*
+  =====================================================
+  RESPONSE
+  =====================================================
+  */
 
   res.status(200).json({
     status: "success",
@@ -196,6 +259,12 @@ ADMIN REJECT WITHDRAWAL
 */
 
 exports.rejectWithdrawal = catchAsync(async (req, res, next) => {
+  /*
+  =====================================================
+  FIND WITHDRAWAL
+  =====================================================
+  */
+
   const withdrawal = await Withdrawal.findById(req.params.id);
 
   if (!withdrawal) {
@@ -203,10 +272,10 @@ exports.rejectWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   /*
-    =====================================================
-    ONLY PENDING WITHDRAWALS CAN BE REJECTED
-    =====================================================
-    */
+  =====================================================
+  ONLY PENDING WITHDRAWALS CAN BE REJECTED
+  =====================================================
+  */
 
   if (withdrawal.status !== "pending") {
     return next(
@@ -215,10 +284,10 @@ exports.rejectWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   /*
-    =====================================================
-    ADMIN NOTE
-    =====================================================
-    */
+  =====================================================
+  ADMIN NOTE
+  =====================================================
+  */
 
   const adminNote = req.body.adminNote?.trim();
 
@@ -229,10 +298,24 @@ exports.rejectWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   /*
-    =====================================================
-    UPDATE WITHDRAWAL
-    =====================================================
-    */
+  =====================================================
+  GET USER
+  =====================================================
+  */
+
+  const user = await User.findById(withdrawal.user).select(
+    "_id firstName lastName email walletBalance",
+  );
+
+  if (!user) {
+    return next(new AppError("User associated with withdrawal not found", 404));
+  }
+
+  /*
+  =====================================================
+  UPDATE WITHDRAWAL
+  =====================================================
+  */
 
   withdrawal.status = "rejected";
 
@@ -243,10 +326,59 @@ exports.rejectWithdrawal = catchAsync(async (req, res, next) => {
   await withdrawal.save();
 
   /*
-    =====================================================
-    RESPONSE
-    =====================================================
+  =====================================================
+  SEND REJECTION EMAIL
+  =====================================================
+  */
+
+  try {
+    const email = new Email(user);
+
+    const subject = "Your EmmCoreShops Withdrawal Was Rejected";
+
+    const message = `
+Hello ${user.firstName || "Customer"},
+
+We are sorry to inform you that your withdrawal request has been rejected.
+
+Withdrawal Details
+------------------------------
+Amount: ₦${withdrawal.amount.toLocaleString()}
+Status: REJECTED
+Withdrawal ID: ${withdrawal._id}
+Date: ${new Date().toLocaleDateString()}
+------------------------------
+
+Reason for rejection:
+${adminNote}
+
+Your wallet balance has NOT been deducted because this withdrawal request was rejected.
+
+If you believe this was a mistake, please contact our support team.
+
+Thank you for using EmmCoreShops.
+
+EmmCoreShops Team
+`;
+
+    await email.send(subject, message);
+
+    console.log("Withdrawal rejection email sent to:", user.email);
+  } catch (emailError) {
+    /*
+    IMPORTANT:
+    Email failure should NOT cancel
+    the rejection.
     */
+
+    console.error("Withdrawal rejection email failed:", emailError.message);
+  }
+
+  /*
+  =====================================================
+  RESPONSE
+  =====================================================
+  */
 
   res.status(200).json({
     status: "success",
@@ -264,6 +396,12 @@ ADMIN MARK WITHDRAWAL AS PAID
 */
 
 exports.markWithdrawalPaid = catchAsync(async (req, res, next) => {
+  /*
+    =====================================================
+    FIND WITHDRAWAL
+    =====================================================
+    */
+
   const withdrawal = await Withdrawal.findById(req.params.id);
 
   if (!withdrawal) {
@@ -271,10 +409,10 @@ exports.markWithdrawalPaid = catchAsync(async (req, res, next) => {
   }
 
   /*
-      =====================================================
-      ONLY APPROVED WITHDRAWALS CAN BE MARKED PAID
-      =====================================================
-      */
+    =====================================================
+    ONLY APPROVED WITHDRAWALS CAN BE MARKED PAID
+    =====================================================
+    */
 
   if (withdrawal.status !== "approved") {
     return next(
@@ -283,16 +421,86 @@ exports.markWithdrawalPaid = catchAsync(async (req, res, next) => {
   }
 
   /*
-      =====================================================
-      UPDATE STATUS
-      =====================================================
-      */
+    =====================================================
+    GET USER
+    =====================================================
+    */
+
+  const user = await User.findById(withdrawal.user).select(
+    "_id firstName lastName email walletBalance",
+  );
+
+  if (!user) {
+    return next(new AppError("User associated with withdrawal not found", 404));
+  }
+
+  /*
+    =====================================================
+    UPDATE STATUS
+    =====================================================
+    */
 
   withdrawal.status = "paid";
 
   withdrawal.processedAt = new Date();
 
   await withdrawal.save();
+
+  /*
+    =====================================================
+    SEND PAYMENT COMPLETED EMAIL
+    =====================================================
+    */
+
+  try {
+    const email = new Email(user);
+
+    const subject = "Your EmmCoreShops Withdrawal Has Been Paid";
+
+    const message = `
+Hello ${user.firstName || "Customer"},
+
+Your EmmCoreShops withdrawal has been successfully paid. 🎉
+
+Withdrawal Details
+------------------------------
+Amount: ₦${withdrawal.amount.toLocaleString()}
+Status: PAID
+Withdrawal ID: ${withdrawal._id}
+Date: ${new Date().toLocaleDateString()}
+------------------------------
+
+Payment was sent to:
+
+Bank: ${withdrawal.bankDetails.bankName}
+Account Name: ${withdrawal.bankDetails.accountName}
+Account Number: ${withdrawal.bankDetails.accountNumber}
+
+Thank you for using EmmCoreShops.
+
+We appreciate your business.
+
+EmmCoreShops Team
+`;
+
+    await email.send(subject, message);
+
+    console.log("Withdrawal paid email sent to:", user.email);
+  } catch (emailError) {
+    /*
+      IMPORTANT:
+      Email failure should NOT cancel
+      the paid status.
+      */
+
+    console.error("Withdrawal paid email failed:", emailError.message);
+  }
+
+  /*
+    =====================================================
+    RESPONSE
+    =====================================================
+    */
 
   res.status(200).json({
     status: "success",
