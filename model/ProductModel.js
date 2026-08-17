@@ -3,9 +3,37 @@ const slugify = require("slugify");
 
 const productSchema = new mongoose.Schema(
   {
+    /*
+    =====================================================
+    PRODUCT IMAGE
+    =====================================================
+    
+    This remains a String intentionally.
+
+    Existing products:
+    data:image/jpeg;base64,...
+
+    New products:
+    https://res.cloudinary.com/...
+    */
     image: {
       type: String,
       required: [true, "Product image is required"],
+      trim: true,
+    },
+
+    /*
+    =====================================================
+    CLOUDINARY PUBLIC ID
+    =====================================================
+
+    Only new Cloudinary uploads will normally have this.
+
+    Existing Base64 products can safely have this empty.
+    */
+    imagePublicId: {
+      type: String,
+      default: "",
       trim: true,
     },
 
@@ -79,9 +107,12 @@ const productSchema = new mongoose.Schema(
     flashSalePrice: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
-    flashSaleEndAt: Date,
+    flashSaleEndAt: {
+      type: Date,
+    },
 
     featured: {
       type: Boolean,
@@ -110,28 +141,54 @@ const productSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+
     toJSON: {
       virtuals: true,
     },
+
     toObject: {
       virtuals: true,
     },
   },
 );
 
+/*
+=====================================================
+DISCOUNT PERCENTAGE
+=====================================================
+*/
+
 productSchema.virtual("discountPercentage").get(function () {
-  if (!this.oldPrice || this.oldPrice <= this.price) return 0;
+  if (!this.oldPrice || this.oldPrice <= this.price) {
+    return 0;
+  }
 
   return Math.round(((this.oldPrice - this.price) / this.oldPrice) * 100);
 });
 
-productSchema.virtual("stockStatus").get(function () {
-  if (this.stock === 0) return "Out of Stock";
+/*
+=====================================================
+STOCK STATUS
+=====================================================
+*/
 
-  if (this.stock < 10) return "Low Stock";
+productSchema.virtual("stockStatus").get(function () {
+  if (this.stock === 0) {
+    return "Out of Stock";
+  }
+
+  if (this.stock < 10) {
+    return "Low Stock";
+  }
 
   return "In Stock";
 });
+
+/*
+=====================================================
+PRE SAVE
+=====================================================
+*/
 
 productSchema.pre("save", async function () {
   this.slug = slugify(this.name, {
@@ -149,6 +206,12 @@ productSchema.pre("save", async function () {
     throw new Error("Flash sale price must be lower than product price.");
   }
 });
+
+/*
+=====================================================
+INDEXES
+=====================================================
+*/
 
 productSchema.index({
   name: "text",
