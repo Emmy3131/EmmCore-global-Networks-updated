@@ -10,7 +10,8 @@
     "node": "24.x"
   },
   "scripts": {
-    "dev": "node --watch server"
+  "dev": "node --watch server.js",
+  "start": "node server.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
