@@ -8,11 +8,6 @@ const productSchema = new mongoose.Schema(
     PRODUCT IMAGE
     =====================================================
     
-    This remains a String intentionally.
-
-    Existing products:
-    data:image/jpeg;base64,...
-
     New products:
     https://res.cloudinary.com/...
     */
