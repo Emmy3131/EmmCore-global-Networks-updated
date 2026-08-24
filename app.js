@@ -38,34 +38,80 @@ const allowedOrigins = [
   "https://emm-core-shops.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log("Blocked CORS origin:", origin);
-        callback(null, false);
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  }),
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests without Origin.
+    // This includes Postman, curl and server-to-server requests.
+    if (!origin) {
+      return callback(null, true);
+    }
 
-app.options("*", cors());
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.log("Blocked CORS origin:", origin);
+
+    // Do not crash the application because of CORS.
+    return callback(null, false);
+  },
+
+  credentials: true,
+
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+  ],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+  ],
+
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+
+/*
+ * Explicitly handle OPTIONS requests.
+ *
+ * This is important for browser preflight requests.
+ */
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  next();
+});
 
 /* =====================================================
    SECURITY
 ===================================================== */
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
 
 const limiter = rateLimit({
-  max: 100,
   windowMs: 60 * 60 * 1000,
-  message: "Too many requests from this IP, please try again in an hour",
+  max: 100,
+
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  message: {
+    status: "fail",
+    message: "Too many requests from this IP, please try again in an hour",
+  },
 });
 
 app.use("/api", limiter);
@@ -74,14 +120,14 @@ app.use(hpp());
 
 /* =====================================================
    PAYSTACK WEBHOOK
-   IMPORTANT: Must come before express.json()
+   MUST COME BEFORE express.json()
 ===================================================== */
 
 app.use(
   "/api/v1/orders/webhook",
   express.raw({
     type: "application/json",
-  }),
+  })
 );
 
 /* =====================================================
@@ -146,7 +192,12 @@ app.use("/api/v1/admin", adminReferralRoutes);
 ===================================================== */
 
 app.use((req, res, next) => {
-  next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
+  next(
+    new AppError(
+      `Cannot find ${req.originalUrl} on this server`,
+      404
+    )
+  );
 });
 
 /* =====================================================
