@@ -40,26 +40,21 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests without an Origin header
-      // such as Postman, server-to-server requests, etc.
-      if (!origin) {
-        return callback(null, true);
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Blocked CORS origin:", origin);
+        callback(null, false);
       }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.log("Blocked CORS request from:", origin);
-
-      // Don't crash the server because of CORS
-      return callback(null, false);
     },
-
     credentials: true,
-  })
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  }),
 );
+
+app.options("*", cors());
 
 /* =====================================================
    SECURITY
@@ -86,7 +81,7 @@ app.use(
   "/api/v1/orders/webhook",
   express.raw({
     type: "application/json",
-  })
+  }),
 );
 
 /* =====================================================
@@ -151,12 +146,7 @@ app.use("/api/v1/admin", adminReferralRoutes);
 ===================================================== */
 
 app.use((req, res, next) => {
-  next(
-    new AppError(
-      `Cannot find ${req.originalUrl} on this server`,
-      404
-    )
-  );
+  next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
 /* =====================================================
