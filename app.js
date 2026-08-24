@@ -141,12 +141,12 @@ app.set("query parser", "extended");
 // ROOT / HEALTH CHECK
 // =====================================================
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    status: "success",
-    message: "EmmCore Global Networks API is running",
-  });
-});
+// app.get("/", (req, res) => {
+//   res.status(200).json({
+//     status: "success",
+//     message: "EmmCore Global Networks API is running",
+//   });
+// });
 
 // =====================================================
 // API ROUTES
