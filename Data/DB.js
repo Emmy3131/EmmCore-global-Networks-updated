@@ -1,56 +1,79 @@
 const mongoose = require("mongoose");
 
 /*
-|--------------------------------------------------------------------------
-| GLOBAL CACHE (Vercel Serverless Optimization)
-|--------------------------------------------------------------------------
+=====================================================
+MONGOOSE GLOBAL CACHE
+=====================================================
 */
 
-let cached = global._mongoose;
-
-if (!cached) {
-  cached = global._mongoose = {
+const cached =
+  global._mongoose ||
+  (global._mongoose = {
     conn: null,
     promise: null,
-  };
-}
+  });
 
 /*
-|--------------------------------------------------------------------------
-| CONNECT DATABASE
-|--------------------------------------------------------------------------
+=====================================================
+CONNECT DATABASE
+=====================================================
 */
 
 const connectDB = async () => {
-  // ✅ already connected
+  /*
+  Already connected
+  */
   if (cached.conn) {
     return cached.conn;
   }
 
-  // ✅ create connection promise once
+  /*
+  Make sure DATABASE exists
+  */
+  if (!process.env.DATABASE) {
+    throw new Error(
+      "DATABASE environment variable is not defined"
+    );
+  }
+
+  /*
+  Create connection promise
+  */
   if (!cached.promise) {
-    const opts = {
+    const options = {
       bufferCommands: false,
       serverSelectionTimeoutMS: 30000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
     };
 
     cached.promise = mongoose
-    
-      .connect(process.env.DATABASE, opts)
+      .connect(process.env.DATABASE, options)
       .then((mongooseInstance) => {
         console.log(
           `✅ MongoDB Connected: ${mongooseInstance.connection.host}`
         );
+
         return mongooseInstance;
       })
-      .catch((err) => {
-        cached.promise = null; // allow retry
-        console.error("❌ MongoDB Connection Error:", err);
-        throw err;
+      .catch((error) => {
+        console.error(
+          "❌ MongoDB Connection Error:",
+          error.message
+        );
+
+        /*
+        Allow a future request to retry.
+        */
+        cached.promise = null;
+
+        throw error;
       });
   }
 
-  // ✅ wait for connection
+  /*
+  Wait for connection
+  */
   cached.conn = await cached.promise;
 
   return cached.conn;

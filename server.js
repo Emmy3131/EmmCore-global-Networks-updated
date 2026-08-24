@@ -1,54 +1,41 @@
-// =====================================================
-// EMMCORE GLOBAL NETWORKS - VERCEL ENTRY POINT
-// =====================================================
-
 const dotenv = require("dotenv");
 
-// Load environment variables
-dotenv.config({ path: "./config.env" });
+dotenv.config({
+  path: "./config.env",
+});
 
-// Import Express application
 const app = require("./app");
-
-// Import database connection
 const connectDB = require("./Data/DB");
 
-// Prevent the same database connection from being
-// established repeatedly during warm Vercel invocations.
-let dbConnectionPromise = null;
+let dbPromise = null;
 
-const connectDatabase = async () => {
-  if (!dbConnectionPromise) {
-    dbConnectionPromise = connectDB().catch((error) => {
-      // Allow a future invocation to retry the connection
-      dbConnectionPromise = null;
+const ensureDatabaseConnection = async () => {
+  if (!dbPromise) {
+    dbPromise = connectDB().catch((error) => {
+      dbPromise = null;
       throw error;
     });
   }
 
-  return dbConnectionPromise;
+  return dbPromise;
 };
 
-// =====================================================
-// VERCEL SERVERLESS HANDLER
-// =====================================================
-
-const handler = async (req, res) => {
+module.exports = async (req, res) => {
   try {
-    // Make sure MongoDB is connected before handling
-    // the request.
-    await connectDatabase();
+    await ensureDatabaseConnection();
 
-    // Pass the request to Express
     return app(req, res);
   } catch (error) {
-    console.error("DATABASE / SERVER ERROR:", error);
+    console.error(
+      "SERVER / DATABASE ERROR:",
+      error
+    );
 
-    return res.status(500).json({
-      status: "error",
-      message: "Server failed to initialize",
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        status: "error",
+        message: "Unable to connect to the server",
+      });
+    }
   }
 };
-
-module.exports = handler;

@@ -9,10 +9,10 @@
   "engines": {
     "node": "24.x"
   },
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
+ "scripts": {
+  "start": "node start.js",
+  "dev": "node --watch start.js"
+},
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
