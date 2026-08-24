@@ -1,56 +1,54 @@
-// ============================
-// 1. UNCAUGHT EXCEPTIONS
-// ============================
-process.on("uncaughtException", (err) => {
-  console.log("UNCAUGHT EXCEPTION, Shutting down...");
-  console.log(err.name, err.message);
-  process.exit(1);
-});
+// =====================================================
+// EMMCORE GLOBAL NETWORKS - VERCEL ENTRY POINT
+// =====================================================
 
-// ============================
-// 2. CONFIG
-// ============================
 const dotenv = require("dotenv");
+
+// Load environment variables
 dotenv.config({ path: "./config.env" });
 
-const port = process.env.PORT || 5000;
-
-// ============================
-// 3. IMPORT APP + DB
-// ============================
+// Import Express application
 const app = require("./app");
+
+// Import database connection
 const connectDB = require("./Data/DB");
 
-// ============================
-// 4. START SERVER (IMPORTANT)
-// ============================
+// Prevent the same database connection from being
+// established repeatedly during warm Vercel invocations.
+let dbConnectionPromise = null;
 
-const startServer = async () => {
+const connectDatabase = async () => {
+  if (!dbConnectionPromise) {
+    dbConnectionPromise = connectDB().catch((error) => {
+      // Allow a future invocation to retry the connection
+      dbConnectionPromise = null;
+      throw error;
+    });
+  }
+
+  return dbConnectionPromise;
+};
+
+// =====================================================
+// VERCEL SERVERLESS HANDLER
+// =====================================================
+
+const handler = async (req, res) => {
   try {
-    // ✅ WAIT FOR DATABASE
-    await connectDB();
+    // Make sure MongoDB is connected before handling
+    // the request.
+    await connectDatabase();
 
-    // ✅ START SERVER AFTER DB CONNECTS
-    const server = app.listen(port, () => {
-      console.log(`🚀 Server running on http://localhost:${port}`);
-    });
-
-    // ============================
-    // 5. UNHANDLED REJECTIONS
-    // ============================
-    process.on("unhandledRejection", (err) => {
-      console.log("UNHANDLED REJECTION, Shutting down...");
-      console.log(err.name, err.message);
-
-      server.close(() => {
-        process.exit(1);
-      });
-    });
-
+    // Pass the request to Express
+    return app(req, res);
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
-    process.exit(1);
+    console.error("DATABASE / SERVER ERROR:", error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Server failed to initialize",
+    });
   }
 };
 
-startServer();
+module.exports = handler;

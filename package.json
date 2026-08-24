@@ -1,16 +1,17 @@
 {
   "name": "emmcore-global-networks",
   "version": "1.0.0",
-  "description": "Api",
+  "description": "EmmCore Global Networks API",
   "license": "ISC",
   "author": "emmanuel",
   "type": "commonjs",
-  "main": "app.js",
+  "main": "server.js",
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "node --watch server"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
