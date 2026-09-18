@@ -130,12 +130,12 @@ QUERY PARSER
 app.set("query parser", "extended");
 
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    status: "success",
-    message: "EmmCore Global Networks API is running",
-  });
-});
+// app.get("/", (req, res) => {
+//   res.status(200).json({
+//     status: "success",
+//     message: "EmmCore Global Networks API is running",
+//   });
+// });
 
 // =====================================================
 // PAYSTACK WEBHOOK
