@@ -3,6 +3,7 @@ const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const hpp = require("hpp");
 const cors = require("cors");
+const cookiePerser = require("cookie-parse");
 
 // =====================================================
 // ROUTES
@@ -41,6 +42,14 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+app.use(cookiePerser());
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  }),
+);
+
 // =====================================================
 // CORS
 // =====================================================
@@ -69,20 +78,9 @@ const corsOptions = {
 
   credentials: true,
 
-  methods: [
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "OPTIONS",
-  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-  ],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
 
   optionsSuccessStatus: 204,
 };
@@ -90,14 +88,22 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // =====================================================
-// SECURITY
+// BODY PARSER
 // =====================================================
 
+app.use(express.json());
+
 app.use(
-  helmet({
-    crossOriginResourcePolicy: false,
-  })
+  express.urlencoded({
+    extended: true,
+  }),
 );
+
+app.use(hpp());
+
+// =====================================================
+// SECURITY
+// =====================================================
 
 const limiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -108,14 +114,23 @@ const limiter = rateLimit({
 
   message: {
     status: "fail",
-    message:
-      "Too many requests from this IP, please try again in an hour",
+    message: "Too many requests from this IP, please try again in an hour",
   },
 });
 
 app.use("/api", limiter);
 
-app.use(hpp());
+
+
+/*
+=====================================================
+QUERY PARSER
+=====================================================
+*/
+app.set("query parser", "extended");
+
+
+
 
 // =====================================================
 // PAYSTACK WEBHOOK
@@ -126,27 +141,8 @@ app.use(
   "/api/v1/orders/webhook",
   express.raw({
     type: "application/json",
-  })
+  }),
 );
-
-// =====================================================
-// BODY PARSER
-// =====================================================
-
-app.use(express.json());
-
-app.set("query parser", "extended");
-
-// =====================================================
-// ROOT / HEALTH CHECK
-// =====================================================
-
-// app.get("/", (req, res) => {
-//   res.status(200).json({
-//     status: "success",
-//     message: "EmmCore Global Networks API is running",
-//   });
-// });
 
 // =====================================================
 // API ROUTES
@@ -191,12 +187,7 @@ app.use("/api/v1/admin", adminReferralRoutes);
 // =====================================================
 
 app.use((req, res, next) => {
-  next(
-    new AppError(
-      `Cannot find ${req.originalUrl} on this server`,
-      404
-    )
-  );
+  next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
 // =====================================================

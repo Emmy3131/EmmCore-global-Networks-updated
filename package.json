@@ -9,12 +9,13 @@
   "engines": {
     "node": "24.x"
   },
- "scripts": {
-  "start": "node start.js",
-  "dev": "node --watch start.js"
-},
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node --watch start.js"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "exceljs": "^3.4.0",
