@@ -3,7 +3,7 @@ const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const hpp = require("hpp");
 const cors = require("cors");
-const cookiePerser = require("cookie-parse");
+const cookieParser = require("cookie-parser");
 
 // =====================================================
 // ROUTES
@@ -42,7 +42,7 @@ const app = express();
 
 app.set("trust proxy", 1);
 
-app.use(cookiePerser());
+app.use(cookieParser());
 
 app.use(
   helmet({
