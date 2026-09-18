@@ -56,7 +56,7 @@ app.use(
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://emm-core-shops.vercel.app",
+  "https://emm-core-shops.vercel.app/",
 ];
 
 const corsOptions = {
@@ -130,7 +130,12 @@ QUERY PARSER
 app.set("query parser", "extended");
 
 
-
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "EmmCore Global Networks API is running",
+  });
+});
 
 // =====================================================
 // PAYSTACK WEBHOOK
